@@ -4,6 +4,12 @@ Shader "Universal Render Pipeline/Simple Lit"
     // Keep properties of StandardSpecular shader for upgrade reasons.
     Properties
     {
+        // Lighting Type
+        _LightingType("LightingType", Float) = 0.0
+        [ToggleUI] _UseSpecularFactor("UseSpecularFactor", Float) = 0.0
+        _SpecularFactor("SpecularFactor", Range(20.0, 100.0)) = 0.0
+        [HideInInspector] _ExtraProp("_ExtraProp", Float) = 0.0
+
         [MainTexture] _BaseMap("Base Map (RGB) Smoothness / Alpha (A)", 2D) = "white" {}
         [MainColor]   _BaseColor("Base Color", Color) = (1, 1, 1, 1)
 
@@ -97,6 +103,8 @@ Shader "Universal Render Pipeline/Simple Lit"
             #pragma shader_feature_local_fragment _ _ALPHAPREMULTIPLY_ON _ALPHAMODULATE_ON
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             #pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA
+            #pragma shader_feature_local_fragment _PLASTIC_LIGHTING_SETUP
+            #pragma shader_feature_local_fragment _HAS_SPECULAR_FACTOR
 
             // -------------------------------------
             // Universal Pipeline keywords
@@ -223,6 +231,8 @@ Shader "Universal Render Pipeline/Simple Lit"
             // -------------------------------------
             // Material Keywords
             #pragma shader_feature_local_fragment _ALPHATEST_ON
+            #pragma shader_feature_local_fragment _PLASTIC_LIGHTING_SETUP
+            #pragma shader_feature_local_fragment _HAS_SPECULAR_FACTOR
             //#pragma shader_feature _ALPHAPREMULTIPLY_ON
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             #pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA

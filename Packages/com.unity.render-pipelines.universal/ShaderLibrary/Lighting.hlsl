@@ -454,7 +454,11 @@ half4 UniversalFragmentBlinnPhong(InputData inputData, SurfaceData surfaceData)
     if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
 #endif
     {
+    #ifdef _PLASTIC_LIGHTING_SETUP
+        lightingData.mainLightColor += CalculatePlasticBlinnPhong(mainLight, inputData, surfaceData);
+    #else
         lightingData.mainLightColor += CalculateBlinnPhong(mainLight, inputData, surfaceData);
+    #endif
     }
 
     #if defined(_ADDITIONAL_LIGHTS)
@@ -470,7 +474,11 @@ half4 UniversalFragmentBlinnPhong(InputData inputData, SurfaceData surfaceData)
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 #endif
         {
+        #ifdef _PLASTIC_LIGHTING_SETUP
+            lightingData.additionalLightsColor += CalculatePlasticBlinnPhong(light, inputData, surfaceData);
+        #else
             lightingData.additionalLightsColor += CalculateBlinnPhong(light, inputData, surfaceData);
+        #endif
         }
     }
     #endif
@@ -481,7 +489,11 @@ half4 UniversalFragmentBlinnPhong(InputData inputData, SurfaceData surfaceData)
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 #endif
         {
+        #ifdef _PLASTIC_LIGHTING_SETUP
+            lightingData.additionalLightsColor += CalculatePlasticBlinnPhong(light, inputData, surfaceData);
+        #else
             lightingData.additionalLightsColor += CalculateBlinnPhong(light, inputData, surfaceData);
+        #endif
         }
     LIGHT_LOOP_END
     #endif

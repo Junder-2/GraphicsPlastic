@@ -13,6 +13,7 @@ CBUFFER_START(UnityPerMaterial)
     half4 _EmissionColor;
     half _Cutoff;
     half _Surface;
+    half _ExtraProp;
     UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
 
@@ -23,6 +24,7 @@ UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
     UNITY_DOTS_INSTANCED_PROP(float4, _EmissionColor)
     UNITY_DOTS_INSTANCED_PROP(float , _Cutoff)
     UNITY_DOTS_INSTANCED_PROP(float , _Surface)
+    UNITY_DOTS_INSTANCED_PROP(float , _ExtraProp)
 UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
 
 static float4 unity_DOTS_Sampled_BaseColor;
@@ -38,6 +40,7 @@ void SetupDOTSSimpleLitMaterialPropertyCaches()
     unity_DOTS_Sampled_EmissionColor = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4 , _EmissionColor);
     unity_DOTS_Sampled_Cutoff        = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float  , _Cutoff);
     unity_DOTS_Sampled_Surface       = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float  , _Surface);
+    unity_DOTS_Sampled_ExtraProp     = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float  , _ExtraProp);
 }
 
 #undef UNITY_SETUP_DOTS_MATERIAL_PROPERTY_CACHES
@@ -48,6 +51,7 @@ void SetupDOTSSimpleLitMaterialPropertyCaches()
 #define _EmissionColor      unity_DOTS_Sampled_EmissionColor
 #define _Cutoff             unity_DOTS_Sampled_Cutoff
 #define _Surface            unity_DOTS_Sampled_Surface
+#define _ExtraProp          unity_DOTS_Sampled_ExtraProp
 
 #endif
 
@@ -87,6 +91,7 @@ inline void InitializeSimpleLitSurfaceData(float2 uv, out SurfaceData outSurface
     outSurfaceData.normalTS = SampleNormal(uv, TEXTURE2D_ARGS(_BumpMap, sampler_BumpMap));
     outSurfaceData.occlusion = 1.0;
     outSurfaceData.emission = SampleEmission(uv, _EmissionColor.rgb, TEXTURE2D_ARGS(_EmissionMap, sampler_EmissionMap));
+    outSurfaceData.extraProp = _ExtraProp;
 }
 
 #endif

@@ -92,6 +92,21 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             public MaterialProperty bumpMapProp;
 
             /// <summary>
+            /// The MaterialProperty for use specularfactor.
+            /// </summary>
+            public MaterialProperty useSpecularFactor;
+
+            /// <summary>
+            /// The MaterialProperty for specularfactor.
+            /// </summary>
+            public MaterialProperty specularFactor;
+
+            /// <summary>
+            /// The MaterialProperty for extraProp. Used as SpecularFactor.
+            /// </summary>
+            public MaterialProperty extraProp;
+
+            /// <summary>
             /// Constructor for the <c>SimpleLitProperties</c> container struct.
             /// </summary>
             /// <param name="properties"></param>
@@ -104,6 +119,11 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
                 smoothnessMapChannel = BaseShaderGUI.FindProperty("_SmoothnessSource", properties, false);
                 smoothness = BaseShaderGUI.FindProperty("_Smoothness", properties, false);
                 bumpMapProp = BaseShaderGUI.FindProperty("_BumpMap", properties, false);
+
+                // PLASTIC
+                useSpecularFactor = BaseShaderGUI.FindProperty("_UseSpecularFactor", properties, false);
+                specularFactor = BaseShaderGUI.FindProperty("_SpecularFactor", properties, false);
+                extraProp = BaseShaderGUI.FindProperty("_ExtraProp", properties, false);
             }
         }
 
@@ -116,6 +136,24 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
         public static void Inputs(SimpleLitProperties properties, MaterialEditor materialEditor, Material material)
         {
             DoSpecularArea(properties, materialEditor, material);
+
+            if (material.HasProperty("_UseSpecularFactor"))
+            {
+                if (material.HasProperty("_UseSpecularFactor")) materialEditor.ShaderProperty(properties.useSpecularFactor, LitGUI.Styles.useSpecularFactor);
+
+                var specularFactorEnabled = material.GetFloat("_UseSpecularFactor") > 0.0;
+
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", specularFactorEnabled);
+
+                if (specularFactorEnabled)
+                {
+                    EditorGUI.indentLevel += 2;
+                    materialEditor.ShaderProperty(properties.specularFactor, LitGUI.Styles.specularFactorText);
+                    material.SetFloat("_ExtraProp", material.GetFloat("_SpecularFactor"));
+                    EditorGUI.indentLevel -= 2;
+                }
+            }
+
             BaseShaderGUI.DrawNormalArea(materialEditor, properties.bumpMapProp);
         }
 
@@ -156,6 +194,15 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
         public static void SetMaterialKeywords(Material material)
         {
             UpdateMaterialSpecularSource(material);
+
+            if (material.HasProperty("_UseSpecularFactor") && material.GetFloat("_UseSpecularFactor") > 0)
+            {
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", true);
+            }
+            else
+            {
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", false);
+            }
         }
 
         private static void UpdateMaterialSpecularSource(Material material)
