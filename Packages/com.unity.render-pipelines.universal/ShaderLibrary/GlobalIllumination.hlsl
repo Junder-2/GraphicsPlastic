@@ -505,6 +505,12 @@ half3 SubtractDirectMainLightFromLightmap(Light mainLight, half3 normalWS, half3
     return min(bakedGI, realtimeShadow);
 }
 
+half3 PlasticEnvironmentReflection(float roughness, float3 positionWS, half3 normalWS, half3 viewDirectionWS, float2 normalizedScreenSpaceUV)
+{
+    half3 reflectVector = reflect(-viewDirectionWS, normalWS);
+    return GlossyEnvironmentReflection(reflectVector, positionWS, roughness, 1.0h, normalizedScreenSpaceUV);
+}
+
 half3 GlobalIllumination(BRDFData brdfData, BRDFData brdfDataClearCoat, float clearCoatMask,
     half3 bakedGI, half occlusion, float3 positionWS,
     half3 normalWS, half3 viewDirectionWS, float2 normalizedScreenSpaceUV)

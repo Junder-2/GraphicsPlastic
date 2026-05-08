@@ -60,6 +60,22 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         Metallic,
     }
 
+    /// <summary>
+    /// Lighting mode.
+    /// </summary>
+    public enum LightingType
+    {
+        /// <summary>
+        /// Default Unity.
+        /// </summary>
+        Default,
+
+        /// <summary>
+        /// Use for Plastic.
+        /// </summary>
+        Plastic,
+    }
+
     enum SurfaceType
     {
         Opaque,
@@ -158,6 +174,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
         [SerializeField]
         SurfaceType m_SurfaceType = SurfaceType.Opaque;
+
+        [SerializeField]
+        LightingType m_LightingType = LightingType.Default;
 
         [SerializeField]
         ZTestMode m_ZTestMode = ZTestMode.LEqual;
@@ -262,6 +281,12 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         {
             get => m_AllowMaterialOverride;
             set => m_AllowMaterialOverride = value;
+        }
+
+        public LightingType lightingType
+        {
+            get => m_LightingType;
+            set => m_LightingType = value;
         }
 
         public SurfaceType surfaceType
@@ -572,6 +597,16 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
         public void AddDefaultSurfacePropertiesGUI(ref TargetPropertyGUIContext context, Action onChange, Action<String> registerUndo, bool showReceiveShadows)
         {
+            context.AddProperty("Lighting Type", new EnumField(LightingType.Default) { value = lightingType }, (evt) =>
+            {
+                if (Equals(lightingType, evt.newValue))
+                    return;
+
+                registerUndo("Change Lighting Type");
+                lightingType = (LightingType)evt.newValue;
+                onChange();
+            });
+
             context.AddProperty("Surface Type", new EnumField(SurfaceType.Opaque) { value = surfaceType }, (evt) =>
             {
                 if (Equals(surfaceType, evt.newValue))

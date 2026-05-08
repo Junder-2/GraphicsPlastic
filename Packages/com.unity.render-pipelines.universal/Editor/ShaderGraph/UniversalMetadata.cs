@@ -16,6 +16,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         bool m_AllowMaterialOverride;
 
         [SerializeField]
+        LightingType m_LightingType;
+
+        [SerializeField]
         SurfaceType m_SurfaceType;
 
         [SerializeField]
@@ -41,6 +44,13 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             get => m_AllowMaterialOverride;
             set => m_AllowMaterialOverride = value;
         }
+
+        public LightingType lightingType
+        {
+            get => m_LightingType;
+            set => m_LightingType = value;
+        }
+
         public SurfaceType surfaceType
         {
             get => m_SurfaceType;

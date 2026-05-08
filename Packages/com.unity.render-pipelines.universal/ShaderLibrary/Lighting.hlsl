@@ -7,6 +7,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/AmbientOcclusion.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DBuffer.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlasticLighting.hlsl"
 
 #if defined(LIGHTMAP_ON)
     #define DECLARE_LIGHTMAP_OR_SH(lmName, shName, index) float2 lmName : TEXCOORD##index
@@ -312,17 +313,39 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
 
     LightingData lightingData = CreateLightingData(inputData, surfaceData);
 
+#ifdef _PLASTIC_LIGHTING_SETUP
+    half3 reflection = PlasticEnvironmentReflection(1.0 - surfaceData.smoothness, inputData.positionWS,
+                                          inputData.normalWS, inputData.viewDirectionWS, inputData.normalizedScreenSpaceUV);
+
+    half reflectance = saturate(surfaceData.smoothness*surfaceData.smoothness*surfaceData.smoothness);
+
+    half NoV = saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
+    half fresnelTerm = Pow4(1.0 - NoV);
+
+    surfaceData.specular = brdfData.specular;
+    float3 specularReflection = reflection * brdfData.specular;
+
+    lightingData.giColor = (inputData.bakedGI * brdfData.diffuse) * aoFactor.indirectAmbientOcclusion;
+    surfaceData.albedo = lerp(brdfData.albedo, specularReflection, reflectance);
+    surfaceData.albedo += (surfaceData.metallic * reflectance * fresnelTerm) * brdfData.specular;
+#else
     lightingData.giColor = GlobalIllumination(brdfData, brdfDataClearCoat, surfaceData.clearCoatMask,
                                               inputData.bakedGI, aoFactor.indirectAmbientOcclusion, inputData.positionWS,
                                               inputData.normalWS, inputData.viewDirectionWS, inputData.normalizedScreenSpaceUV);
+#endif
+
 #ifdef _LIGHT_LAYERS
     if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
 #endif
     {
+    #ifdef _PLASTIC_LIGHTING_SETUP
+        lightingData.mainLightColor += CalculatePlasticBlinnPhong(mainLight, inputData, surfaceData);
+    #else
         lightingData.mainLightColor = LightingPhysicallyBased(brdfData, brdfDataClearCoat,
                                                               mainLight,
                                                               inputData.normalWS, inputData.viewDirectionWS,
                                                               surfaceData.clearCoatMask, specularHighlightsOff);
+    #endif
     }
 
     #if defined(_ADDITIONAL_LIGHTS)
@@ -339,9 +362,13 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 #endif
         {
+        #ifdef _PLASTIC_LIGHTING_SETUP
+            lightingData.additionalLightsColor += CalculatePlasticBlinnPhong(light, inputData, surfaceData);
+        #else
             lightingData.additionalLightsColor += LightingPhysicallyBased(brdfData, brdfDataClearCoat, light,
                                                                           inputData.normalWS, inputData.viewDirectionWS,
                                                                           surfaceData.clearCoatMask, specularHighlightsOff);
+        #endif
         }
     }
     #endif
@@ -353,9 +380,13 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 #endif
         {
+        #ifdef _PLASTIC_LIGHTING_SETUP
+            lightingData.additionalLightsColor += CalculatePlasticBlinnPhong(light, inputData, surfaceData);
+        #else
             lightingData.additionalLightsColor += LightingPhysicallyBased(brdfData, brdfDataClearCoat, light,
                                                                           inputData.normalWS, inputData.viewDirectionWS,
                                                                           surfaceData.clearCoatMask, specularHighlightsOff);
+        #endif
         }
     LIGHT_LOOP_END
     #endif
@@ -388,6 +419,9 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
     surfaceData.alpha = alpha;
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceScale = 0;
+    surfaceData.extraProp = 0;
 
     return UniversalFragmentPBR(inputData, surfaceData);
 }

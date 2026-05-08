@@ -20,6 +20,7 @@ float4 _DetailAlbedoMap_ST;
 half4 _BaseColor;
 half4 _SpecColor;
 half4 _EmissionColor;
+half4 _SubsurfaceColor;
 half _Cutoff;
 half _Smoothness;
 half _Metallic;
@@ -31,6 +32,7 @@ half _ClearCoatSmoothness;
 half _DetailAlbedoMapScale;
 half _DetailNormalMapScale;
 half _Surface;
+half _ExtraProp;
 UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
 
@@ -43,6 +45,7 @@ UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
     UNITY_DOTS_INSTANCED_PROP(float4, _BaseColor)
     UNITY_DOTS_INSTANCED_PROP(float4, _SpecColor)
     UNITY_DOTS_INSTANCED_PROP(float4, _EmissionColor)
+    UNITY_DOTS_INSTANCED_PROP(float4, _SubsurfaceColor)
     UNITY_DOTS_INSTANCED_PROP(float , _Cutoff)
     UNITY_DOTS_INSTANCED_PROP(float , _Smoothness)
     UNITY_DOTS_INSTANCED_PROP(float , _Metallic)
@@ -54,6 +57,7 @@ UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
     UNITY_DOTS_INSTANCED_PROP(float , _DetailAlbedoMapScale)
     UNITY_DOTS_INSTANCED_PROP(float , _DetailNormalMapScale)
     UNITY_DOTS_INSTANCED_PROP(float , _Surface)
+    UNITY_DOTS_INSTANCED_PROP(float , _ExtraProp)
 UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
 
 // Here, we want to avoid overriding a property like e.g. _BaseColor with something like this:
@@ -69,6 +73,7 @@ UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
 static float4 unity_DOTS_Sampled_BaseColor;
 static float4 unity_DOTS_Sampled_SpecColor;
 static float4 unity_DOTS_Sampled_EmissionColor;
+static float4 unity_DOTS_Sampled_SubsurfaceColor;
 static float  unity_DOTS_Sampled_Cutoff;
 static float  unity_DOTS_Sampled_Smoothness;
 static float  unity_DOTS_Sampled_Metallic;
@@ -80,12 +85,14 @@ static float  unity_DOTS_Sampled_ClearCoatSmoothness;
 static float  unity_DOTS_Sampled_DetailAlbedoMapScale;
 static float  unity_DOTS_Sampled_DetailNormalMapScale;
 static float  unity_DOTS_Sampled_Surface;
+static float  unity_DOTS_Sampled_ExtraProp;
 
 void SetupDOTSLitMaterialPropertyCaches()
 {
     unity_DOTS_Sampled_BaseColor            = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _BaseColor);
     unity_DOTS_Sampled_SpecColor            = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _SpecColor);
     unity_DOTS_Sampled_EmissionColor        = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _EmissionColor);
+    unity_DOTS_Sampled_SubsurfaceColor      = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _SubsurfaceColor);
     unity_DOTS_Sampled_Cutoff               = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _Cutoff);
     unity_DOTS_Sampled_Smoothness           = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _Smoothness);
     unity_DOTS_Sampled_Metallic             = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _Metallic);
@@ -97,6 +104,7 @@ void SetupDOTSLitMaterialPropertyCaches()
     unity_DOTS_Sampled_DetailAlbedoMapScale = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _DetailAlbedoMapScale);
     unity_DOTS_Sampled_DetailNormalMapScale = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _DetailNormalMapScale);
     unity_DOTS_Sampled_Surface              = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _Surface);
+    unity_DOTS_Sampled_ExtraProp            = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float , _ExtraProp);
 }
 
 #undef UNITY_SETUP_DOTS_MATERIAL_PROPERTY_CACHES
@@ -105,6 +113,7 @@ void SetupDOTSLitMaterialPropertyCaches()
 #define _BaseColor              unity_DOTS_Sampled_BaseColor
 #define _SpecColor              unity_DOTS_Sampled_SpecColor
 #define _EmissionColor          unity_DOTS_Sampled_EmissionColor
+#define _SubsurfaceColor        unity_DOTS_Sampled_SubsurfaceColor
 #define _Cutoff                 unity_DOTS_Sampled_Cutoff
 #define _Smoothness             unity_DOTS_Sampled_Smoothness
 #define _Metallic               unity_DOTS_Sampled_Metallic
@@ -116,6 +125,7 @@ void SetupDOTSLitMaterialPropertyCaches()
 #define _DetailAlbedoMapScale   unity_DOTS_Sampled_DetailAlbedoMapScale
 #define _DetailNormalMapScale   unity_DOTS_Sampled_DetailNormalMapScale
 #define _Surface                unity_DOTS_Sampled_Surface
+#define _ExtraProp              unity_DOTS_Sampled_ExtraProp
 
 #endif
 
@@ -127,6 +137,7 @@ TEXTURE2D(_DetailNormalMap);    SAMPLER(sampler_DetailNormalMap);
 TEXTURE2D(_MetallicGlossMap);   SAMPLER(sampler_MetallicGlossMap);
 TEXTURE2D(_SpecGlossMap);       SAMPLER(sampler_SpecGlossMap);
 TEXTURE2D(_ClearCoatMap);       SAMPLER(sampler_ClearCoatMap);
+TEXTURE2D(_SubsurfaceColorMap); SAMPLER(sampler_SubsurfaceColorMap);
 
 #ifdef _SPECULAR_SETUP
     #define SAMPLE_METALLICSPECULAR(uv) SAMPLE_TEXTURE2D(_SpecGlossMap, sampler_SpecGlossMap, uv)
@@ -172,6 +183,23 @@ half SampleOcclusion(float2 uv)
     #endif
 }
 
+// Returns subsurface data
+// rgb == color
+// a == scale
+half4 SampleSubsurfaceColor(float2 uv)
+{
+#if defined(_SUBSURFACECOLOR) || defined(_SUBSURFACEMAP)
+    half4 subsurfaceData = _SubsurfaceColor;
+
+#if defined(_SUBSURFACEMAP)
+    subsurfaceData *= SAMPLE_TEXTURE2D(_SubsurfaceColorMap, sampler_SubsurfaceColorMap, uv).rgba;
+#endif
+
+    return subsurfaceData;
+#else
+    return half4(0.0, 0.0, 0.0, 0.0);
+#endif  // _SUBSURFACECOLOR
+}
 
 // Returns clear coat parameters
 // .x/.r == mask
@@ -278,6 +306,21 @@ inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfa
 #else
     outSurfaceData.clearCoatMask       = half(0.0);
     outSurfaceData.clearCoatSmoothness = half(0.0);
+#endif
+
+#if defined(_HAS_SPECULAR_FACTOR)
+    outSurfaceData.extraProp           = _ExtraProp;
+#else
+    outSurfaceData.extraProp           = half(0.0);
+#endif
+
+#if defined(_SUBSURFACECOLOR) || defined(_SUBSURFACEMAP)
+    half4 subsurfaceColor = SampleSubsurfaceColor(uv);
+    outSurfaceData.subsurfaceColor     = subsurfaceColor.rgb;
+    outSurfaceData.subsurfaceScale     = subsurfaceColor.a;
+#else
+    outSurfaceData.subsurfaceColor     = half3(0.0, 0.0, 0.0);
+    outSurfaceData.subsurfaceScale     = half(0.0);
 #endif
 
 #if defined(_DETAIL)

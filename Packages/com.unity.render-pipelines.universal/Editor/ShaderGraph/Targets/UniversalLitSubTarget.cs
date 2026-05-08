@@ -104,6 +104,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 material.SetFloat(Property.SpecularWorkflowMode, (float)workflowMode);
                 material.SetFloat(Property.CastShadows, target.castShadows ? 1.0f : 0.0f);
                 material.SetFloat(Property.ReceiveShadows, target.receiveShadows ? 1.0f : 0.0f);
+                material.SetFloat(Property.LightingType, (float)target.lightingType);
                 material.SetFloat(Property.SurfaceType, (float)target.surfaceType);
                 material.SetFloat(Property.BlendMode, (float)target.alphaMode);
                 material.SetFloat(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
@@ -177,6 +178,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 collector.AddFloatProperty(Property.ReceiveShadows, target.receiveShadows ? 1.0f : 0.0f);
 
                 // setup properties using the defaults
+                collector.AddFloatProperty(Property.LightingType, (float)target.lightingType);
                 collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
                 collector.AddFloatProperty(Property.BlendMode, (float)target.alphaMode);
                 collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);

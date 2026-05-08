@@ -65,6 +65,22 @@ namespace UnityEditor
         }
 
         /// <summary>
+        /// Lighting mode.
+        /// </summary>
+        public enum LightingType
+        {
+            /// <summary>
+            /// Default Unity.
+            /// </summary>
+            Default,
+
+            /// <summary>
+            /// Use for Plastic.
+            /// </summary>
+            Plastic,
+        }
+
+        /// <summary>
         /// The blend mode for your material.
         /// </summary>
         public enum BlendMode
@@ -149,6 +165,11 @@ namespace UnityEditor
         protected class Styles
         {
             /// <summary>
+            /// The names for options available in the lightingType enum.
+            /// </summary>
+            public static readonly string[] lightingTypeNames = Enum.GetNames(typeof(LightingType));
+
+            /// <summary>
             /// The names for options available in the SurfaceType enum.
             /// </summary>
             public static readonly string[] surfaceTypeNames = Enum.GetNames(typeof(SurfaceType));
@@ -203,6 +224,12 @@ namespace UnityEditor
             /// </summary>
             public static readonly GUIContent AdvancedLabel = EditorGUIUtility.TrTextContent("Advanced Options",
                 "These settings affect behind-the-scenes rendering and underlying calculations.");
+
+            /// <summary>
+            /// The text and tooltip for the Lighting Type GUI.
+            /// </summary>
+            public static readonly GUIContent lightingType = EditorGUIUtility.TrTextContent("Lighting Type",
+                "Select lighting type.");
 
             /// <summary>
             /// The text and tooltip for the Surface Type GUI.
@@ -320,6 +347,11 @@ namespace UnityEditor
         /// The editor for the material.
         /// </summary>
         protected MaterialEditor materialEditor { get; set; }
+
+        /// <summary>
+        /// The MaterialProperty for lighting type.
+        /// </summary>
+        protected MaterialProperty lightingTypeProp { get; set; }
 
         /// <summary>
         /// The MaterialProperty for surface type.
@@ -451,6 +483,8 @@ namespace UnityEditor
             if (material == null)
                 return;
 
+            lightingTypeProp = FindProperty(Property.LightingType, properties, false);
+
             surfaceTypeProp = FindProperty(Property.SurfaceType, properties, false);
             blendModeProp = FindProperty(Property.BlendMode, properties, false);
             preserveSpecProp = FindProperty(Property.BlendModePreserveSpecular, properties, false);  // Separate blend for diffuse and specular.
@@ -573,6 +607,7 @@ namespace UnityEditor
         /// <param name="material">The material to use.</param>
         public virtual void DrawSurfaceOptions(Material material)
         {
+            DoPopup(Styles.lightingType, lightingTypeProp, Styles.lightingTypeNames);
             DoPopup(Styles.surfaceType, surfaceTypeProp, Styles.surfaceTypeNames);
             if ((surfaceTypeProp != null) && ((SurfaceType)surfaceTypeProp.floatValue == SurfaceType.Transparent))
             {
@@ -924,6 +959,11 @@ namespace UnityEditor
         public static void SetMaterialKeywords(Material material, Action<Material> shadingModelFunc = null, Action<Material> shaderFunc = null)
         {
             UpdateMaterialSurfaceOptions(material, automaticRenderQueue: true);
+
+            bool isPlasticLighting = false;
+            if (material.HasProperty(Property.LightingType))
+                isPlasticLighting = ((LightingType)material.GetFloat(Property.LightingType)) == LightingType.Plastic;
+            CoreUtils.SetKeyword(material, "_PLASTIC_LIGHTING_SETUP", isPlasticLighting);
 
             // Setup double sided GI based on Cull state
             if (material.HasProperty(Property.CullMode))

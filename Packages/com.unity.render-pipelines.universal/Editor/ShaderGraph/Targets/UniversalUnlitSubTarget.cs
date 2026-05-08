@@ -80,6 +80,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 // which will pull over the defaults from the shader definition)
                 // but if that ever changes, this will ensure the defaults are set
                 material.SetFloat(Property.SurfaceType, (float)target.surfaceType);
+                material.SetFloat(Property.LightingType, (float)target.lightingType);
                 material.SetFloat(Property.BlendMode, (float)target.alphaMode);
                 material.SetFloat(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
                 material.SetFloat(Property.CullMode, (int)target.renderFace);
@@ -119,6 +120,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             if (target.allowMaterialOverride)
             {
                 collector.AddFloatProperty(Property.CastShadows, target.castShadows ? 1.0f : 0.0f);
+                collector.AddFloatProperty(Property.LightingType, (float)target.lightingType);
                 collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
                 collector.AddFloatProperty(Property.BlendMode, (float)target.alphaMode);
                 collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);

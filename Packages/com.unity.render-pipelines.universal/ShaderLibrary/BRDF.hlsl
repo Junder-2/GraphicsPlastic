@@ -84,13 +84,23 @@ inline void InitializeBRDFData(half3 albedo, half metallic, half3 specular, half
 #ifdef _SPECULAR_SETUP
     half reflectivity = ReflectivitySpecular(specular);
     half oneMinusReflectivity = half(1.0) - reflectivity;
+#ifdef _PLASTIC_LIGHTING_SETUP
+    half3 brdfDiffuse = albedo;
+    half3 brdfSpecular = specular;
+#else
     half3 brdfDiffuse = albedo * oneMinusReflectivity;
     half3 brdfSpecular = specular;
+#endif
 #else
     half oneMinusReflectivity = OneMinusReflectivityMetallic(metallic);
     half reflectivity = half(1.0) - oneMinusReflectivity;
+#ifdef _PLASTIC_LIGHTING_SETUP
+    half3 brdfDiffuse = albedo;
+    half3 brdfSpecular = lerp(saturate(albedo * .1), saturate(albedo * 1.1), metallic);
+#else
     half3 brdfDiffuse = albedo * oneMinusReflectivity;
     half3 brdfSpecular = lerp(kDielectricSpec.rgb, albedo, metallic);
+#endif
 #endif
 
     InitializeBRDFDataDirect(albedo, brdfDiffuse, brdfSpecular, reflectivity, oneMinusReflectivity, smoothness, alpha, outBRDFData);

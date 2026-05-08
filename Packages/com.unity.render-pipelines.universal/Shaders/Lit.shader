@@ -5,6 +5,15 @@ Shader "Universal Render Pipeline/Lit"
         // Specular vs Metallic workflow
         _WorkflowMode("WorkflowMode", Float) = 1.0
 
+        // Lighting Type
+        _LightingType("LightingType", Float) = 0.0
+        [ToggleUI] _UseSpecularFactor("UseSpecularFactor", Float) = 0.0
+        _SpecularFactor("SpecularFactor", Range(20.0, 100.0)) = 0.0
+        [ToggleUI] _UseSubsurface("UseSubsurface", Float) = 0.0
+        _SubsurfaceColor("SubsurfaceColor", Color) = (0.5, 0.5, 0.5, 1.0)
+        _SubsurfaceMap("SubsurfaceMap", 2D) = "white" {}
+        [HideInInspector] _ExtraProp("_ExtraProp", Float) = 0.0
+
         [MainTexture] _BaseMap("Albedo", 2D) = "white" {}
         [MainColor] _BaseColor("Color", Color) = (1,1,1,1)
 
@@ -132,6 +141,10 @@ Shader "Universal Render Pipeline/Lit"
             #pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
             #pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
             #pragma shader_feature_local_fragment _SPECULAR_SETUP
+            #pragma shader_feature_local_fragment _PLASTIC_LIGHTING_SETUP
+            #pragma shader_feature_local_fragment _HAS_SPECULAR_FACTOR
+            #pragma shader_feature_local_fragment _SUBSURFACECOLOR
+            #pragma shader_feature_local_fragment _SUBSURFACEMAP
 
             // -------------------------------------
             // Universal Pipeline keywords
@@ -272,6 +285,10 @@ Shader "Universal Render Pipeline/Lit"
             #pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
             #pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
             #pragma shader_feature_local_fragment _SPECULAR_SETUP
+            #pragma shader_feature_local_fragment _PLASTIC_LIGHTING_SETUP
+            #pragma shader_feature_local_fragment _HAS_SPECULAR_FACTOR
+            #pragma shader_feature_local_fragment _SUBSURFACECOLOR
+            #pragma shader_feature_local_fragment _SUBSURFACEMAP
             #pragma shader_feature_local _RECEIVE_SHADOWS_OFF
 
             // -------------------------------------

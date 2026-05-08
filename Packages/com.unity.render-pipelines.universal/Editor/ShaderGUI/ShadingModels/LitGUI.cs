@@ -132,6 +132,31 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             public static GUIContent clearCoatSmoothnessText = EditorGUIUtility.TrTextContent("Smoothness",
                 "Specifies the smoothness of the coating." +
                 "\nActs as a multiplier of the clear coat map smoothness value or as a direct smoothness value if no map is specified.");
+
+            /// <summary>
+            /// The text and tooltip for Enable Specular Factor GUI.
+            /// </summary>
+            public static GUIContent useSpecularFactor = EditorGUIUtility.TrTextContent("Use Specular Factor",
+                "Select if use manual specular factor for plastic lighting.");
+
+            /// <summary>
+            /// The text and tooltip for the Specular Factor.
+            /// </summary>
+            public static GUIContent specularFactorText = EditorGUIUtility.TrTextContent("Specular Factor",
+                "Specifies the Manual Specular Factor, Default is 60");
+
+            /// <summary>
+            /// The text and tooltip for the Surface Type GUI.
+            /// </summary>
+            public static GUIContent useSubsurface = EditorGUIUtility.TrTextContent("Use Subsurface",
+                "Select if use subsurface.");
+
+            /// <summary>
+            /// The text and tooltip for the clear coat smoothness GUI.
+            /// </summary>
+            public static GUIContent subsurfaceColor = EditorGUIUtility.TrTextContent("Subsurface Color",
+                "Subsurface color and scale in alpha" +
+                "\nThe map specifies Color in RGB and scale in the alpha channel.");
         }
 
         /// <summary>
@@ -243,6 +268,36 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             public MaterialProperty clearCoatSmoothness;
 
             /// <summary>
+            /// The MaterialProperty for use specularfactor.
+            /// </summary>
+            public MaterialProperty useSpecularFactor;
+
+            /// <summary>
+            /// The MaterialProperty for specularfactor.
+            /// </summary>
+            public MaterialProperty specularFactor;
+
+            /// <summary>
+            /// The MaterialProperty for use subsurface.
+            /// </summary>
+            public MaterialProperty useSubsurface;
+
+            /// <summary>
+            /// The MaterialProperty for subsurface Map.
+            /// </summary>
+            public MaterialProperty subsurfaceMap;
+
+            /// <summary>
+            /// The MaterialProperty for subsurface Color.
+            /// </summary>
+            public MaterialProperty subsurfaceColor;
+
+            /// <summary>
+            /// The MaterialProperty for extraProp. Used as SpecularFactor.
+            /// </summary>
+            public MaterialProperty extraProp;
+
+            /// <summary>
             /// Constructor for the <c>LitProperties</c> container struct.
             /// </summary>
             /// <param name="properties"></param>
@@ -271,6 +326,14 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
                 clearCoatMap = BaseShaderGUI.FindProperty("_ClearCoatMap", properties, false);
                 clearCoatMask = BaseShaderGUI.FindProperty("_ClearCoatMask", properties, false);
                 clearCoatSmoothness = BaseShaderGUI.FindProperty("_ClearCoatSmoothness", properties, false);
+
+                // PLASTIC
+                useSpecularFactor = BaseShaderGUI.FindProperty("_UseSpecularFactor", properties, false);
+                specularFactor = BaseShaderGUI.FindProperty("_SpecularFactor", properties, false);
+                useSubsurface = BaseShaderGUI.FindProperty("_UseSubsurface", properties, false);
+                subsurfaceColor = BaseShaderGUI.FindProperty("_SubsurfaceColor", properties, false);
+                subsurfaceMap = BaseShaderGUI.FindProperty("_SubsurfaceMap", properties, false);
+                extraProp = BaseShaderGUI.FindProperty("_ExtraProp", properties, false);
             }
         }
 
@@ -292,6 +355,37 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             {
                 materialEditor.TexturePropertySingleLine(Styles.occlusionText, properties.occlusionMap,
                     properties.occlusionMap.textureValue != null ? properties.occlusionStrength : null);
+            }
+
+            if (material.HasProperty("_UseSpecularFactor"))
+            {
+                if (material.HasProperty("_UseSpecularFactor")) materialEditor.ShaderProperty(properties.useSpecularFactor, Styles.useSpecularFactor);
+
+                var specularFactorEnabled = material.GetFloat("_UseSpecularFactor") > 0.0;
+
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", specularFactorEnabled);
+
+                if (specularFactorEnabled)
+                {
+                    EditorGUI.indentLevel += 2;
+                    materialEditor.ShaderProperty(properties.specularFactor, Styles.specularFactorText);
+                    material.SetFloat("_ExtraProp", material.GetFloat("_SpecularFactor"));
+                    EditorGUI.indentLevel -= 2;
+                }
+            }
+
+            if (material.HasProperty("_UseSubsurface"))
+            {
+                if (material.HasProperty("_UseSubsurface")) materialEditor.ShaderProperty(properties.useSubsurface, Styles.useSubsurface);
+
+                var subsurfaceEnabled = material.GetFloat("_UseSubsurface") > 0.0;
+
+                if (subsurfaceEnabled)
+                {
+                    EditorGUI.indentLevel += 2;
+                    materialEditor.TexturePropertySingleLine(Styles.subsurfaceColor, properties.subsurfaceMap, properties.subsurfaceColor);
+                    EditorGUI.indentLevel -= 2;
+                }
             }
 
             // Check that we have all the required properties for clear coat,
@@ -502,6 +596,35 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             {
                 CoreUtils.SetKeyword(material, "_CLEARCOAT", false);
                 CoreUtils.SetKeyword(material, "_CLEARCOATMAP", false);
+            }
+
+            if (material.HasProperty("_UseSpecularFactor") && material.GetFloat("_UseSpecularFactor") > 0)
+            {
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", true);
+            }
+            else
+            {
+                CoreUtils.SetKeyword(material, "_HAS_SPECULAR_FACTOR", false);
+            }
+
+            if (material.HasProperty("_UseSubsurface") && material.GetFloat("_UseSubsurface") > 0)
+            {
+                var hasMap = material.HasProperty("_SubsurfaceMap") && material.GetTexture("_SubsurfaceMap") != null;
+                if (hasMap)
+                {
+                    CoreUtils.SetKeyword(material, "_SUBSURFACECOLOR", false);
+                    CoreUtils.SetKeyword(material, "_SUBSURFACEMAP", true);
+                }
+                else
+                {
+                    CoreUtils.SetKeyword(material, "_SUBSURFACECOLOR", true);
+                    CoreUtils.SetKeyword(material, "_SUBSURFACEMAP", false);
+                }
+            }
+            else
+            {
+                CoreUtils.SetKeyword(material, "_SUBSURFACECOLOR", false);
+                CoreUtils.SetKeyword(material, "_SUBSURFACEMAP", false);
             }
         }
     }

@@ -63,6 +63,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             {
                 urpMetadata.allowMaterialOverride = target.allowMaterialOverride;
                 urpMetadata.surfaceType = target.surfaceType;
+                urpMetadata.lightingType = target.lightingType;
                 urpMetadata.castShadows = target.castShadows;
                 urpMetadata.hasVertexModificationInMotionVector = target.additionalMotionVectorMode != AdditionalMotionVectorMode.None || graphData.AnyVertexAnimationActive();
             }
