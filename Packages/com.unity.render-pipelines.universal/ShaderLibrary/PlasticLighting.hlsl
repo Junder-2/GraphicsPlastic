@@ -3,10 +3,10 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
 
-half PlasticSubsurface(half3 lightDir, half3 normal)
+half PlasticSubsurface(half strength, half3 lightDir, half3 normal)
 {
     half DotL = dot(lightDir, normal);
-    return pow(1.0 - abs(DotL), 4);
+    return pow(1.0 - abs(DotL), lerp(4, 2, strength));
 }
 
 half3 PlasticLambert(half3 lightColor, half3 lightDir, half3 normal)
@@ -40,7 +40,7 @@ half3 CalculatePlasticBlinnPhong(Light light, InputData inputData, SurfaceData s
 #endif
 
 #if defined(_SUBSURFACECOLOR) || defined(_SUBSURFACEMAP)
-    half lightSubsurfaceStrength = (PlasticSubsurface(light.direction, inputData.normalWS)) * surfaceData.subsurfaceScale * saturate(Luminance(attenuatedLightColor));
+    half lightSubsurfaceStrength = (PlasticSubsurface(surfaceData.subsurfaceStrength, light.direction, inputData.normalWS)) * saturate(Luminance(attenuatedLightColor));
     half3 albedo = lerp(surfaceData.albedo, surfaceData.subsurfaceColor, lightSubsurfaceStrength);
 #else
     half3 albedo = surfaceData.albedo;

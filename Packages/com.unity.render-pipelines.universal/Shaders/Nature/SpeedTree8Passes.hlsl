@@ -487,7 +487,7 @@ half4 SpeedTree8Frag(SpeedTreeFragmentInput input) : SV_Target
     surfaceData.alpha = alpha;
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
-    surfaceData.subsurfaceScale = 0;
+    surfaceData.subsurfaceStrength = 0;
     surfaceData.subsurfaceColor = 0;
     surfaceData.extraProp = 0;
 

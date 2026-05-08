@@ -317,10 +317,10 @@ inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfa
 #if defined(_SUBSURFACECOLOR) || defined(_SUBSURFACEMAP)
     half4 subsurfaceColor = SampleSubsurfaceColor(uv);
     outSurfaceData.subsurfaceColor     = subsurfaceColor.rgb;
-    outSurfaceData.subsurfaceScale     = subsurfaceColor.a;
+    outSurfaceData.subsurfaceStrength     = subsurfaceColor.a;
 #else
     outSurfaceData.subsurfaceColor     = half3(0.0, 0.0, 0.0);
-    outSurfaceData.subsurfaceScale     = half(0.0);
+    outSurfaceData.subsurfaceStrength     = half(0.0);
 #endif
 
 #if defined(_DETAIL)

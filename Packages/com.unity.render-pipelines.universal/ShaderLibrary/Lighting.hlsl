@@ -420,7 +420,7 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
     surfaceData.subsurfaceColor = 0;
-    surfaceData.subsurfaceScale = 0;
+    surfaceData.subsurfaceStrength = 0;
     surfaceData.extraProp = 0;
 
     return UniversalFragmentPBR(inputData, surfaceData);

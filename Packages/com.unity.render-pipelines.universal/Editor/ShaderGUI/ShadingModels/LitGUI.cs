@@ -155,8 +155,8 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             /// The text and tooltip for the clear coat smoothness GUI.
             /// </summary>
             public static GUIContent subsurfaceColor = EditorGUIUtility.TrTextContent("Subsurface Color",
-                "Subsurface color and scale in alpha" +
-                "\nThe map specifies Color in RGB and scale in the alpha channel.");
+                "Subsurface color and strength factor in alpha" +
+                "\nThe map specifies Color in RGB and strength factor in the alpha channel.");
         }
 
         /// <summary>

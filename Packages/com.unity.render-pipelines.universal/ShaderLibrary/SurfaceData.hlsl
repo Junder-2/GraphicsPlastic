@@ -15,7 +15,7 @@ struct SurfaceData
     half  alpha;
     half  clearCoatMask;
     half  clearCoatSmoothness;
-    half  subsurfaceScale;
+    half  subsurfaceStrength;
     half  extraProp;
 };
 
