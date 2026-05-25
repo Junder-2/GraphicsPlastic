@@ -61,6 +61,11 @@ bool UpdateSurfaceAndInputDataForDebug(inout SurfaceData surfaceData, inout Inpu
         surfaceData.clearCoatSmoothness = 1;
         surfaceData.metallic = 0;
         surfaceData.smoothness = 0;
+
+        // PLASTIC
+        surfaceData.subsurfaceColor = 0;
+        surfaceData.subsurfaceStrength  = 0;
+        surfaceData.extraProp = 0;
         changed = true;
     }
     else if (_DebugLightingMode == DEBUGLIGHTINGMODE_REFLECTIONS || _DebugLightingMode == DEBUGLIGHTINGMODE_REFLECTIONS_WITH_SMOOTHNESS)
@@ -72,6 +77,10 @@ bool UpdateSurfaceAndInputDataForDebug(inout SurfaceData surfaceData, inout Inpu
         surfaceData.clearCoatSmoothness = 1;
         surfaceData.specular = 1;
         surfaceData.metallic = 0;
+        // PLASTIC
+        surfaceData.subsurfaceColor = 0;
+        surfaceData.subsurfaceStrength = 0;
+        surfaceData.extraProp = 0;
         if (_DebugLightingMode == DEBUGLIGHTINGMODE_REFLECTIONS)
         {
             surfaceData.smoothness = 1;

@@ -53,6 +53,12 @@ namespace UnityEditor.ShaderGraph
                 new ColorControl(UnityEngine.Color.grey, false), ShaderStage.Fragment);
             public static BlockFieldDescriptor AbsorptionStrength = new BlockFieldDescriptor(SurfaceDescription.name, "AbsorptionStrength", "Color Absorption Strength", "SURFACEDESCRIPTION_COLOR_ABSORPTION_STRENGTH",
                 new FloatControl(0.5f), ShaderStage.Fragment);
+            public static BlockFieldDescriptor SubsurfaceColor = new BlockFieldDescriptor(SurfaceDescription.name, "SubsurfaceColor", "Subsurface Color", "SURFACEDESCRIPTION_SUBSURFACECOLOR",
+                new ColorControl(UnityEngine.Color.grey, false), ShaderStage.Fragment);
+            public static BlockFieldDescriptor SubsurfaceStrength = new BlockFieldDescriptor(SurfaceDescription.name, "SubsurfaceStrength", "SURFACEDESCRIPTION_SUBSURFACESTRENGTH",
+                new FloatControl(0.5f), ShaderStage.Fragment);
+            public static BlockFieldDescriptor SpecularFactor = new BlockFieldDescriptor(SurfaceDescription.name, "SpecularFactor", "Specular Factor", "SURFACEDESCRIPTION_SPECULARFACTOR",
+                new FloatControl(60f), ShaderStage.Fragment);
         }
 
         [GenerateBlocks]

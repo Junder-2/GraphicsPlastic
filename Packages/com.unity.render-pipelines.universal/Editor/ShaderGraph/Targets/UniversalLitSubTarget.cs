@@ -31,6 +31,12 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         [SerializeField]
         bool m_BlendModePreserveSpecular = true;
 
+        [SerializeField]
+        bool m_Subsurface = false;
+
+        [SerializeField]
+        bool m_SpecularFactor = false;
+
         public UniversalLitSubTarget()
         {
             displayName = "Lit";
@@ -54,6 +60,18 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         {
             get => m_ClearCoat;
             set => m_ClearCoat = value;
+        }
+
+        public bool subsurface
+        {
+            get => m_Subsurface;
+            set => m_Subsurface = value;
+        }
+
+        public bool specularFactor
+        {
+            get => m_SpecularFactor;
+            set => m_SpecularFactor = value;
         }
 
         private bool complexLit
@@ -101,10 +119,10 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 // (technically not necessary since we are always recreating the material from the shader each time,
                 // which will pull over the defaults from the shader definition)
                 // but if that ever changes, this will ensure the defaults are set
+                material.SetFloat(Property.LightingType, (float)target.lightingType); // PLASTIC
                 material.SetFloat(Property.SpecularWorkflowMode, (float)workflowMode);
                 material.SetFloat(Property.CastShadows, target.castShadows ? 1.0f : 0.0f);
                 material.SetFloat(Property.ReceiveShadows, target.receiveShadows ? 1.0f : 0.0f);
-                material.SetFloat(Property.LightingType, (float)target.lightingType);
                 material.SetFloat(Property.SurfaceType, (float)target.surfaceType);
                 material.SetFloat(Property.BlendMode, (float)target.alphaMode);
                 material.SetFloat(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
@@ -166,6 +184,10 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             // always controlled by subtarget clearCoat checkbox (no Material control)
             context.AddBlock(BlockFields.SurfaceDescription.CoatMask, clearCoat);
             context.AddBlock(BlockFields.SurfaceDescription.CoatSmoothness, clearCoat);
+
+            context.AddBlock(BlockFields.SurfaceDescription.SubsurfaceColor, subsurface);
+            context.AddBlock(BlockFields.SurfaceDescription.SubsurfaceStrength, subsurface);
+            context.AddBlock(BlockFields.SurfaceDescription.SpecularFactor, specularFactor);
         }
 
         public override void CollectShaderProperties(PropertyCollector collector, GenerationMode generationMode)
@@ -178,7 +200,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 collector.AddFloatProperty(Property.ReceiveShadows, target.receiveShadows ? 1.0f : 0.0f);
 
                 // setup properties using the defaults
-                collector.AddFloatProperty(Property.LightingType, (float)target.lightingType);
+                collector.AddFloatProperty(Property.LightingType, (float)target.lightingType); // PLASTIC
                 collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
                 collector.AddFloatProperty(Property.BlendMode, (float)target.alphaMode);
                 collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
@@ -256,6 +278,26 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                         onChange();
                     });
             }
+
+            context.AddProperty("Subsurface", new Toggle() { value = subsurface }, (evt) =>
+            {
+                if (Equals(subsurface, evt.newValue))
+                    return;
+
+                registerUndo("Change Subsurface");
+                subsurface = evt.newValue;
+                onChange();
+            });
+
+            context.AddProperty("Specular Factor", new Toggle() { value = specularFactor }, (evt) =>
+            {
+                if (Equals(specularFactor, evt.newValue))
+                    return;
+
+                registerUndo("Change Specular Factor");
+                specularFactor = evt.newValue;
+                onChange();
+            });
         }
 
         protected override int ComputeMaterialNeedsUpdateHash()
@@ -394,6 +436,19 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         #region Passes
         static class LitPasses
         {
+            static void AddPlasticControlToPass(ref PassDescriptor pass, UniversalTarget target)
+            {
+                if (target.activeSubTarget is UniversalLitSubTarget { subsurface: true })
+                {
+                    pass.defines.Add(LitDefines.Subsurface, 1);
+                }
+
+                if (target.activeSubTarget is UniversalLitSubTarget { specularFactor: true })
+                {
+                    pass.defines.Add(LitDefines.SpecularFactor, 1);
+                }
+            }
+
             static void AddWorkflowModeControlToPass(ref PassDescriptor pass, UniversalTarget target, WorkflowMode workflowMode)
             {
                 if (target.allowMaterialOverride)
@@ -454,6 +509,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 AddWorkflowModeControlToPass(ref result, target, workflowMode);
                 AddReceiveShadowsControlToPass(ref result, target, target.receiveShadows);
                 CorePasses.AddLODCrossFadeControlToPass(ref result, target);
+                AddPlasticControlToPass(ref result, target);
 
                 return result;
             }
@@ -508,6 +564,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 AddWorkflowModeControlToPass(ref result, target, workflowMode);
                 AddReceiveShadowsControlToPass(ref result, target, target.receiveShadows);
                 CorePasses.AddLODCrossFadeControlToPass(ref result, target);
+                AddPlasticControlToPass(ref result, target);
 
                 return result;
             }
@@ -728,6 +785,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 BlockFields.SurfaceDescription.Occlusion,
                 BlockFields.SurfaceDescription.Alpha,
                 BlockFields.SurfaceDescription.AlphaClipThreshold,
+                BlockFields.SurfaceDescription.SubsurfaceColor,
+                BlockFields.SurfaceDescription.SubsurfaceStrength,
+                BlockFields.SurfaceDescription.SpecularFactor,
             };
 
             public static readonly BlockFieldDescriptor[] FragmentComplexLit = new BlockFieldDescriptor[]
@@ -809,6 +869,26 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         #region Defines
         static class LitDefines
         {
+            public static readonly KeywordDescriptor Subsurface = new KeywordDescriptor()
+            {
+                displayName = "Subsurface",
+                referenceName = "_SUBSURFACECOLOR",
+                type = KeywordType.Boolean,
+                definition = KeywordDefinition.ShaderFeature,
+                scope = KeywordScope.Local,
+                stages = KeywordShaderStage.Fragment
+            };
+
+            public static readonly KeywordDescriptor SpecularFactor = new KeywordDescriptor()
+            {
+                displayName = "SpecularFactor",
+                referenceName = "_HAS_SPECULAR_FACTOR",
+                type = KeywordType.Boolean,
+                definition = KeywordDefinition.ShaderFeature,
+                scope = KeywordScope.Local,
+                stages = KeywordShaderStage.Fragment
+            };
+
             public static readonly KeywordDescriptor ClearCoat = new KeywordDescriptor()
             {
                 displayName = "Clear Coat",

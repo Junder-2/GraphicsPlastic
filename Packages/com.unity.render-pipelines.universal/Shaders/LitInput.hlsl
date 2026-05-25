@@ -308,6 +308,7 @@ inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfa
     outSurfaceData.clearCoatSmoothness = half(0.0);
 #endif
 
+// PLASTIC
 #if defined(_HAS_SPECULAR_FACTOR)
     outSurfaceData.extraProp           = _ExtraProp;
 #else
@@ -317,10 +318,10 @@ inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfa
 #if defined(_SUBSURFACECOLOR) || defined(_SUBSURFACEMAP)
     half4 subsurfaceColor = SampleSubsurfaceColor(uv);
     outSurfaceData.subsurfaceColor     = subsurfaceColor.rgb;
-    outSurfaceData.subsurfaceStrength     = subsurfaceColor.a;
+    outSurfaceData.subsurfaceStrength  = subsurfaceColor.a;
 #else
     outSurfaceData.subsurfaceColor     = half3(0.0, 0.0, 0.0);
-    outSurfaceData.subsurfaceStrength     = half(0.0);
+    outSurfaceData.subsurfaceStrength  = half(0.0);
 #endif
 
 #if defined(_DETAIL)

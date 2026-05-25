@@ -139,6 +139,11 @@ void GetSurface(DecalSurfaceData decalSurfaceData, inout SurfaceData surfaceData
     surfaceData.alpha = saturate(decalSurfaceData.baseColor.w);
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
+
+    // PLASTIC
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceStrength = 0;
+    surfaceData.extraProp = 0;
 }
 
 PackedVaryings Vert(Attributes inputMesh)

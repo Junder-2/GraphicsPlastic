@@ -1011,6 +1011,11 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 }
             }
 
+            if (target.lightingType == LightingType.Plastic)
+            {
+                pass.defines.Add(CoreKeywordDescriptors.PlasticLightingSetup, 1);
+            }
+
             AddAlphaClipControlToPass(ref pass, target);
         }
 
@@ -1979,6 +1984,17 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
     #region KeywordDescriptors
     static class CoreKeywordDescriptors
     {
+        // PLASTIC
+        public static readonly KeywordDescriptor PlasticLightingSetup = new KeywordDescriptor()
+        {
+            displayName = "PlasticLightingSetup",
+            referenceName = "_PLASTIC_LIGHTING_SETUP",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Local,
+            stages = KeywordShaderStage.Fragment,
+        };
+
         public static readonly KeywordDescriptor StaticLightmap = new KeywordDescriptor()
         {
             displayName = "Static Lightmap",

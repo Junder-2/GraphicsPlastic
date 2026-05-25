@@ -39,6 +39,10 @@ half4 UniversalFragmentUnlit(InputData inputData, half3 color, half alpha)
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
     surfaceData.normalTS = half3(0, 0, 1);
+    // PLASTIC
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceStrength = 0;
+    surfaceData.extraProp = 0;
 
     return UniversalFragmentUnlit(inputData, surfaceData);
 }

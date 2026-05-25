@@ -10,11 +10,12 @@ struct SurfaceData
     half  smoothness;
     half3 normalTS;
     half3 emission;
-    half3 subsurfaceColor;
     half  occlusion;
     half  alpha;
     half  clearCoatMask;
     half  clearCoatSmoothness;
+    // PLASTIC
+    half3 subsurfaceColor;
     half  subsurfaceStrength;
     half  extraProp;
 };

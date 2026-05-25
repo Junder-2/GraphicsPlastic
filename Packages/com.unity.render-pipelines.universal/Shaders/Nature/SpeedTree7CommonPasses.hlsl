@@ -213,6 +213,11 @@ half4 SpeedTree7Frag(SpeedTreeVertexOutput input) : SV_Target
     surfaceData.clearCoatSmoothness = 1;
     surfaceData.normalTS = normalTs;
 
+    // PLASTIC
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceStrength = 0;
+    surfaceData.extraProp = 0;
+
     #ifdef GBUFFER
         half4 color = half4(inputData.bakedGI * diffuseColor.rgb, diffuse.a);
         surfaceData.occlusion = 1.0;

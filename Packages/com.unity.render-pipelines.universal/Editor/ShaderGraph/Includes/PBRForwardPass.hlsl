@@ -149,6 +149,20 @@ void frag(
     surface.clearCoatMask       = 0;
     surface.clearCoatSmoothness = 1;
 
+    // PLASTIC
+    surface.subsurfaceColor     = 0;
+    surface.subsurfaceStrength  = 0;
+    surface.extraProp           = 1;
+
+    #ifdef _SUBSURFACECOLOR
+        surface.subsurfaceColor = surfaceDescription.SubsurfaceColor;
+        surface.subsurfaceStrength = surfaceDescription.SubsurfaceStrength;
+    #endif
+
+    #ifdef _HAS_SPECULAR_FACTOR
+        surface.extraProp = surfaceDescription.SpecularFactor;
+    #endif
+
     #ifdef _CLEARCOAT
         surface.clearCoatMask       = saturate(surfaceDescription.CoatMask);
         surface.clearCoatSmoothness = saturate(surfaceDescription.CoatSmoothness);

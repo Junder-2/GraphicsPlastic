@@ -6,7 +6,7 @@
 half PlasticSubsurface(half strength, half3 lightDir, half3 normal)
 {
     half DotL = dot(lightDir, normal);
-    return pow(1.0 - abs(DotL), lerp(4, 2, strength));
+    return pow(saturate(1.0 - abs(DotL)), lerp(4, 2, strength));
 }
 
 half3 PlasticLambert(half3 lightColor, half3 lightDir, half3 normal)

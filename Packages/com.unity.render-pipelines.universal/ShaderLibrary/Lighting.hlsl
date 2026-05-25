@@ -521,6 +521,11 @@ half4 UniversalFragmentBlinnPhong(InputData inputData, half3 diffuse, half4 spec
     surfaceData.clearCoatSmoothness = 1;
     surfaceData.normalTS = normalTS;
 
+    // PLASTIC
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceStrength = 0;
+    surfaceData.extraProp = 0;
+
     return UniversalFragmentBlinnPhong(inputData, surfaceData);
 }
 
@@ -564,6 +569,11 @@ half4 UniversalFragmentBakedLit(InputData inputData, half3 color, half alpha, ha
     surfaceData.clearCoatMask = 0;
     surfaceData.clearCoatSmoothness = 1;
     surfaceData.normalTS = normalTS;
+
+    // PLASTIC
+    surfaceData.subsurfaceColor = 0;
+    surfaceData.subsurfaceStrength = 0;
+    surfaceData.extraProp = 0;
 
     return UniversalFragmentBakedLit(inputData, surfaceData);
 }

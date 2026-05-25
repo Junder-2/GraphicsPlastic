@@ -95,6 +95,11 @@ void frag(PackedVaryings packedInput,
     surface.clearCoatMask       = 0;
     surface.clearCoatSmoothness = 1;
 
+    // PLASTIC
+    surface.subsurfaceColor     = 0;
+    surface.subsurfaceStrength  = 0;
+    surface.extraProp           = 0;
+
     surface.albedo = AlphaModulate(surface.albedo, surface.alpha);
 
 #ifdef _DBUFFER
