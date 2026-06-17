@@ -317,17 +317,17 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
     half3 reflection = PlasticEnvironmentReflection(1.0 - surfaceData.smoothness, inputData.positionWS,
                                           inputData.normalWS, inputData.viewDirectionWS, inputData.normalizedScreenSpaceUV);
 
-    half reflectance = saturate(surfaceData.smoothness*surfaceData.smoothness*surfaceData.smoothness);
+    half reflectance = saturate(pow(surfaceData.smoothness, 6));
 
     half NoV = saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
     half fresnelTerm = Pow4(1.0 - NoV);
 
     surfaceData.specular = brdfData.specular;
-    float3 specularReflection = reflection * brdfData.specular;
+    half3 specularReflection = reflection * brdfData.specular;
 
-    lightingData.giColor = (inputData.bakedGI * brdfData.diffuse) * aoFactor.indirectAmbientOcclusion;
-    surfaceData.albedo = lerp(brdfData.albedo, specularReflection, reflectance);
-    surfaceData.albedo += (surfaceData.metallic * reflectance * fresnelTerm) * brdfData.specular;
+    half3 diffuseGI = inputData.bakedGI * brdfData.diffuse;
+    lightingData.giColor = (lerp(diffuseGI, specularReflection, reflectance)) * aoFactor.indirectAmbientOcclusion;
+    lightingData.giColor += (surfaceData.metallic * reflectance * fresnelTerm) * brdfData.specular;
 #else
     lightingData.giColor = GlobalIllumination(brdfData, brdfDataClearCoat, surfaceData.clearCoatMask,
                                               inputData.bakedGI, aoFactor.indirectAmbientOcclusion, inputData.positionWS,

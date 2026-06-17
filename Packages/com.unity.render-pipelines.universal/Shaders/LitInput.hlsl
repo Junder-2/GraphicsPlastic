@@ -287,7 +287,7 @@ inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfa
     outSurfaceData.albedo = AlphaModulate(outSurfaceData.albedo, outSurfaceData.alpha);
 
 #if _SPECULAR_SETUP
-    outSurfaceData.metallic = half(1.0);
+    outSurfaceData.metallic = half(0.0);
     outSurfaceData.specular = specGloss.rgb;
 #else
     outSurfaceData.metallic = specGloss.r;
