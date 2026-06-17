@@ -1035,6 +1035,12 @@ namespace UnityEngine.Rendering.Universal
         public static GlobalKeyword LinearToSRGBConversion;
         public static GlobalKeyword _ENABLE_ALPHA_OUTPUT;
         public static GlobalKeyword ForwardPlus; // Backward compatibility. Deprecated in 6.1.
+        // PLASTIC
+        public static GlobalKeyword ReflectionScreen;
+        public static GlobalKeyword ReflectionScreenBilinear;
+        public static GlobalKeyword ReflectionScreenTrilinear;
+        public static GlobalKeyword ReflectionScreenBicubic;
+        public static GlobalKeyword ReflectionScreenMipMaps;
         // TODO: Move following keywords to Local keywords?
         // https://docs.unity3d.com/ScriptReference/Rendering.LocalKeyword.html
         //public static GlobalKeyword TonemapACES;
@@ -1148,6 +1154,13 @@ namespace UnityEngine.Rendering.Universal
             ShaderGlobalKeywords.LinearToSRGBConversion = GlobalKeyword.Create(ShaderKeywordStrings.LinearToSRGBConversion);
             ShaderGlobalKeywords._ENABLE_ALPHA_OUTPUT = GlobalKeyword.Create(ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT);
             ShaderGlobalKeywords.ForwardPlus = GlobalKeyword.Create(ShaderKeywordStrings.ForwardPlus); // Backward compatibility. Deprecated in 6.1.
+
+            // PLASTIC
+            ShaderGlobalKeywords.ReflectionScreen = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreen);
+            ShaderGlobalKeywords.ReflectionScreenBilinear = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenBilinear);
+            ShaderGlobalKeywords.ReflectionScreenTrilinear = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenTrilinear);
+            ShaderGlobalKeywords.ReflectionScreenBicubic = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenBicubic);
+            ShaderGlobalKeywords.ReflectionScreenMipMaps = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenMipMaps);
         }
     }
 
@@ -1485,6 +1498,15 @@ namespace UnityEngine.Rendering.Universal
 
         /// <summary> Keyword used for Multi Sampling Anti-Aliasing (MSAA) with 4 per pixel sample count. </summary>
         public const string Msaa4 = "_MSAA_4";
+
+        // PLASTIC
+        /// <summary> Keyword used for screen space reflection texture. </summary>
+        public const string ReflectionScreen = "_REFLECTION_SCREEN";
+
+        public const string ReflectionScreenBilinear = "_REFLECTION_SCREEN_BILINEAR";
+        public const string ReflectionScreenTrilinear = "_REFLECTION_SCREEN_TRILINEAR";
+        public const string ReflectionScreenBicubic = "_REFLECTION_SCREEN_BICUBIC";
+        public const string ReflectionScreenMipMaps = "_REFLECTION_SCREEN_MIPS";
     }
 
     public sealed partial class UniversalRenderPipeline
@@ -1969,6 +1991,13 @@ namespace UnityEngine.Rendering.Universal
         LensFlareScreenSpace,
         DrawMotionVectors,
         DrawFullscreen,
+
+        // PLASTIC
+        RayReflection,
+        RayReflectionBlur,
+        [HideInDebugUI] RG_RayReflectionBlurSetup,
+        [HideInDebugUI] RG_RayReflectionBlurDownsample,
+        [HideInDebugUI] RG_RayReflectionBlurCopy,
 
         // PostProcessPass RenderGraph
         [HideInDebugUI] RG_SetupPostFX,

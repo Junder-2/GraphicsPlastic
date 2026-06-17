@@ -119,7 +119,6 @@ namespace UnityEngine.Rendering.Universal
             }
 
             return true;
-
         }
     }
 }

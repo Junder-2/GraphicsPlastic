@@ -1,0 +1,85 @@
+#include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RaytraceCommon.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RayAccumulateCommon.hlsl"
+
+#pragma max_recursion_depth 10
+
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+float _PixelSpreadAngle;
+
+float _NearClip;
+
+RWTexture2D<float4> _ReflectionRenderTarget;
+// RWTexture2D<half> _ShadowRenderTarget;
+
+bool _WriteReflections;
+bool _WriteShadows;
+
+int _FrameIndex;
+
+[shader("raygeneration")]
+void Raytracer()
+{
+    uint3 dispatchId = DispatchRaysIndex();
+    uint3 dispatchDim = DispatchRaysDimensions();
+
+    // init random seed from current pixel location and frame index
+    uint seed = initRand(dispatchId.x + dispatchId.y * dispatchDim.x, _FrameIndex % 64);
+
+    bool renderPixel = ((uint(dispatchId.x * _AccumulateReflectionOffset.x) +
+                         uint(dispatchId.y * _AccumulateReflectionOffset.y) + (uint)_AccumulateReflectionFrameIndex)
+                         & 1) == 0;
+
+    if (!renderPixel) return;
+
+    // float2 variance = float2(nextRand(seed), nextRand(seed));
+    float2 uv = (dispatchId.xy + float2(.5f,.5f)) / float2(dispatchDim.x, dispatchDim.y) * 2.0f - 1.0f;
+
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    // Invert the perspective projection of the view-space position
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    // Transform the direction from camera to world space and normalize
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.Direction = direction;
+    ray.TMin = _NearClip;
+    ray.TMax = gClipDistance;
+
+    RayPayload payload;
+    payload.color = half3(0, 0, 0);
+    payload.shadow = 1;
+    payload.randomSeed = seed;
+    payload.depth = 0;
+    payload.data = 0;
+
+    payload.rayConeSpreadAngle = _PixelSpreadAngle;
+    payload.rayConeWidth = 0;
+
+    uint flags = 0;
+
+    flags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+
+    TraceRay(_RaytracingAccelerationStructure, flags, 0xFF, 0, 1, 0, ray, payload);
+
+    // float3 color = _ReflectionRenderTarget[dispatchId.xy];
+    // _ReflectionRenderTarget[dispatchId.xy] = lerp(color, payload.color, .16f);
+    _ReflectionRenderTarget[dispatchId.xy] = float4(saturate(payload.color), 1.h - saturate(-payload.color.x));
+    // if(_WriteReflections) _ReflectionRenderTarget[dispatchId.xy] = payload.color;
+    // if(_WriteShadows) _ShadowRenderTarget[dispatchId.xy] = payload.shadow;
+}
+
+[shader("miss")]
+void MyMissShader(inout RayPayload payload : SV_RayPayload)
+{
+    payload.color = half3(-1.h, -1.h, -1.h);
+}
+
+[shader("miss")]
+void ShadowMiss(inout ShadowHitInfo hit : SV_RayPayload)
+{
+    hit.isHit = 0;
+}

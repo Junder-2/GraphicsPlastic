@@ -15,6 +15,45 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 #endif
 
+#if defined(_REFLECTION_SCREEN)
+TEXTURE2D_X(_ScreenSpaceReflectionTexture);
+float4 _ScreenSpaceReflectionTexture_TexelSize;
+
+half4 SampleReflectionScreen(float2 pos, half roughness)
+{
+#if defined(_REFLECTION_SCREEN_MIPS)
+    float mip = PerceptualRoughnessToMipmapLevel(roughness, 8);
+#else
+    float mip = 0.f;
+#endif
+#if defined(_REFLECTION_SCREEN_BICUBIC)
+    mip = floor(mip);
+    half divisor = pow(2, mip);
+    half divisor2 = 1.0 / divisor;
+    float4 texSize = _ScreenSpaceReflectionTexture_TexelSize.zwxy * float4(divisor2, divisor2, divisor, divisor);
+    half2 maxCoord = (1.0).xx;
+
+    float2 xy = pos * texSize.xy + 0.5;
+    float2 ic = floor(xy);
+    float2 fc = frac(xy);
+
+    float2 weights[2], offsets[2];
+    BicubicFilter(fc, weights, offsets);
+
+    return weights[0].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)) +
+           weights[1].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip));
+#elif defined(_REFLECTION_SCREEN_TRILINEAR) && defined(_REFLECTION_SCREEN_MIPS)
+    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_TrilinearClamp, pos, mip);
+#elif defined(_REFLECTION_SCREEN_BILINEAR) || defined(_REFLECTION_SCREEN_TRILINEAR)
+    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, pos, mip);
+#else
+    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_PointClamp, pos, mip);
+#endif
+}
+#endif
+
 #if defined(_SCREEN_SPACE_IRRADIANCE)
 TEXTURE2D_X(_ScreenSpaceIrradiance);
 
@@ -419,9 +458,21 @@ half3 CalculateIrradianceFromReflectionProbes(half3 reflectVector, float3 positi
 
 half3 GlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half perceptualRoughness, half occlusion, float2 normalizedScreenSpaceUV)
 {
+    half3 screenReflect = half3(0.h, 0.h, 0.h);
+    half screenReflectMask = 0.h;
     half3 irradiance;
 
 #if !defined(_ENVIRONMENTREFLECTIONS_OFF)
+    #if defined(_REFLECTION_SCREEN)
+    half4 reflectColor = SampleReflectionScreen(normalizedScreenSpaceUV.xy, perceptualRoughness);
+    screenReflect = saturate(reflectColor.rgb);
+    screenReflectMask = reflectColor.a;
+    if (screenReflectMask >= 1.h)
+    {
+        return screenReflect * occlusion;
+    }
+    #endif
+
     if (_REFLECTION_PROBE_BLENDING)
     {
         irradiance = CalculateIrradianceFromReflectionProbes(reflectVector, positionWS, perceptualRoughness, normalizedScreenSpaceUV);
@@ -451,7 +502,7 @@ half3 GlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half p
     irradiance = _GlossyEnvironmentColor.rgb;
 #endif // !_ENVIRONMENTREFLECTIONS_OFF
 
-    return irradiance * occlusion;
+    return lerp(irradiance, saturate(screenReflect), screenReflectMask) * occlusion;
 }
 
 #if !USE_CLUSTER_LIGHT_LOOP
