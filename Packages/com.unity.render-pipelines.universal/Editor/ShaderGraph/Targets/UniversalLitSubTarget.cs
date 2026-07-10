@@ -201,9 +201,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
                 // setup properties using the defaults
                 collector.AddFloatProperty(Property.LightingType, (float)target.lightingType); // PLASTIC
-                collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
+                // collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
                 collector.AddFloatProperty(Property.BlendMode, (float)target.alphaMode);
-                collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
+                // collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
                 collector.AddFloatProperty(Property.BlendModePreserveSpecular, blendModePreserveSpecular ? 1.0f : 0.0f);
                 collector.AddFloatProperty(Property.SrcBlend, 1.0f);    // always set by material inspector, ok to have incorrect values here
                 collector.AddFloatProperty(Property.DstBlend, 0.0f);    // always set by material inspector, ok to have incorrect values here
@@ -223,6 +223,10 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             // We initialize queue control to -1 to indicate to UpdateMaterial that it needs to initialize it properly on the material.
             collector.AddFloatProperty(Property.QueueOffset, 0.0f);
             collector.AddFloatProperty(Property.QueueControl, -1.0f);
+
+            // PLASTIC Needed for anyhit
+            collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
+            collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
 
             if (IsSpacewarpSupported())
                 collector.AddFloatProperty(Property.XrMotionVectorsPass, 1.0f);
@@ -422,6 +426,8 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
                 result.passes.Add(PassVariant(LitPasses.Meta(target), CorePragmas.Default));
 
+                result.passes.Add(PassVariant(LitPasses.RaytracingLit(target, workflowMode, blendModePreserveSpecular), CorePragmas.Raytracing));
+
                 // Currently neither of these passes (selection/picking) can be last for the game view for
                 // UI shaders to render correctly. Verify [1352225] before changing this order.
                 result.passes.Add(PassVariant(CorePasses.SceneSelection(target), CorePragmas.Default));
@@ -565,6 +571,71 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 AddReceiveShadowsControlToPass(ref result, target, target.receiveShadows);
                 CorePasses.AddLODCrossFadeControlToPass(ref result, target);
                 AddPlasticControlToPass(ref result, target);
+
+                return result;
+            }
+
+            // PLASTIC
+            public static PassDescriptor RaytracingLit(
+                UniversalTarget target,
+                WorkflowMode workflowMode,
+                bool blendModePreserveSpecular)
+            {
+                var result = new PassDescriptor()
+                {
+                    // Definition
+                    displayName = "RaytracingLit",
+                    referenceName = "SHADERPASS_RAYTRACINGLIT",
+                    lightMode = "RaytracingLit",
+                    useInPreview = false,
+
+                    // Template
+                    passTemplatePath = UniversalTarget.kUberTemplatePath,
+                    sharedTemplateDirectories = UniversalTarget.kSharedTemplateDirectories,
+
+                    // Port Mask
+                    validPixelBlocks = LitBlockMasks.FragmentLit,
+
+                    // Fields
+                    structs = new StructCollection()
+                    {
+                        { Structs.Attributes },
+                        { UniversalStructs.Varyings },
+                        { Structs.SurfaceDescriptionInputs },
+                        // { Structs.VertexDescriptionInputs },
+                    },
+                    requiredFields = LitRequiredFields.Raytracing,
+                    fieldDependencies = new DependencyCollection()
+                    {
+                        { FieldDependencies.Varyings },
+                        // { FieldDependencies.VertexDescription },
+                        { FieldDependencies.SurfaceDescription },
+                        new FieldDependency(UniversalStructFields.Varyings.stereoTargetEyeIndexAsRTArrayIdx,    StructFields.Attributes.instanceID),
+                        new FieldDependency(UniversalStructFields.Varyings.stereoTargetEyeIndexAsBlendIdx0,     StructFields.Attributes.instanceID),
+                    },
+
+                    // Conditional State
+                    // renderStates = ,
+                    pragmas = CorePragmas.Raytracing,
+                    defines = new DefineCollection() { CoreDefines.IsRaytracing },
+                    keywords = new KeywordCollection() { LitKeywords.RaytracingLit },
+                    includes = LitIncludes.RaytracingLit,
+
+                    // Custom Interpolator Support
+                    // customInterpolators = CoreCustomInterpDescriptors.Common
+                };
+
+                CorePasses.AddTargetSurfaceControlsToPass(ref result, target, blendModePreserveSpecular);
+                AddWorkflowModeControlToPass(ref result, target, workflowMode);
+                AddReceiveShadowsControlToPass(ref result, target, target.receiveShadows);
+                // CorePasses.AddLODCrossFadeControlToPass(ref result, target);
+                AddPlasticControlToPass(ref result, target);
+
+                if (target.renderFace != RenderFace.Front)
+                {
+                    result.keywords.Add(CoreKeywordDescriptors.RayFaceMode);
+                }
+
 
                 return result;
             }
@@ -863,12 +934,40 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 StructFields.Varyings.texCoord1,                        // VizUV
                 StructFields.Varyings.texCoord2,                        // LightCoord
             };
+
+            public static readonly FieldCollection Raytracing = new FieldCollection()
+            {
+                StructFields.Attributes.uv1,
+                StructFields.Attributes.uv2,
+                StructFields.Varyings.positionWS,
+                StructFields.Varyings.normalWS,
+                StructFields.Varyings.tangentWS,                        // needed for vertex lighting
+                UniversalStructFields.Varyings.staticLightmapUV,
+                UniversalStructFields.Varyings.dynamicLightmapUV,
+                UniversalStructFields.Varyings.sh,
+                UniversalStructFields.Varyings.probeOcclusion,
+                UniversalStructFields.Varyings.fogFactorAndVertexLight, // fog and vertex lighting, vert input is dependency
+                UniversalStructFields.Varyings.shadowCoord,             // shadow coord, vert input is dependency
+                StructFields.SurfaceDescriptionInputs.rayLod,
+                StructFields.Varyings.rayLod,
+            };
         }
         #endregion
 
         #region Defines
         static class LitDefines
         {
+            public static readonly KeywordDescriptor ClearCoat = new KeywordDescriptor()
+            {
+                displayName = "Clear Coat",
+                referenceName = "_CLEARCOAT",
+                type = KeywordType.Boolean,
+                definition = KeywordDefinition.ShaderFeature,
+                scope = KeywordScope.Local,
+                stages = KeywordShaderStage.Fragment
+            };
+
+            // PLASTIC
             public static readonly KeywordDescriptor Subsurface = new KeywordDescriptor()
             {
                 displayName = "Subsurface",
@@ -883,16 +982,6 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             {
                 displayName = "SpecularFactor",
                 referenceName = "_HAS_SPECULAR_FACTOR",
-                type = KeywordType.Boolean,
-                definition = KeywordDefinition.ShaderFeature,
-                scope = KeywordScope.Local,
-                stages = KeywordShaderStage.Fragment
-            };
-
-            public static readonly KeywordDescriptor ClearCoat = new KeywordDescriptor()
-            {
-                displayName = "Clear Coat",
-                referenceName = "_CLEARCOAT",
                 type = KeywordType.Boolean,
                 definition = KeywordDefinition.ShaderFeature,
                 scope = KeywordScope.Local,
@@ -948,6 +1037,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 { CoreKeywordDescriptors.LightCookies },
                 { CoreKeywordDescriptors.ClusterLightLoop },
                 { CoreKeywordDescriptors.EvaluateSh },
+                { CoreKeywordDescriptors.ReflectionScreen },
+                { CoreKeywordDescriptors.ReflectionScreenSampling },
+                { CoreKeywordDescriptors.ReflectionScreenMips },
             };
 
             public static readonly KeywordCollection GBuffer = new KeywordCollection
@@ -972,6 +1064,32 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 { CoreKeywordDescriptors.DebugDisplay },
                 { CoreKeywordDescriptors.ClusterLightLoop },
             };
+
+            // PLASTIC
+            public static readonly KeywordCollection RaytracingLit = new KeywordCollection
+            {
+                { CoreKeywordDescriptors.StaticLightmap },
+                { CoreKeywordDescriptors.DynamicLightmap },
+                { CoreKeywordDescriptors.DirectionalLightmapCombined },
+                { CoreKeywordDescriptors.UseLegacyLightmaps },
+                { CoreKeywordDescriptors.LightmapBicubicSampling },
+                { CoreKeywordDescriptors.ReflectionProbeRotation },
+                { CoreKeywordDescriptors.MainLightShadows },
+                { CoreKeywordDescriptors.AdditionalLights },
+                { CoreKeywordDescriptors.RayAdditionalLightShadows },
+                { CoreKeywordDescriptors.RayReflectionProbeBlending },
+                { CoreKeywordDescriptors.RayReflectionProbeBoxProjection },
+                { CoreKeywordDescriptors.RayReflectionProbeAtlas },
+                { CoreKeywordDescriptors.RayShadowsSoft },
+                { CoreKeywordDescriptors.LightmapShadowMixing },
+                { CoreKeywordDescriptors.ShadowsShadowmask },
+                { CoreKeywordDescriptors.RayLightLayers },
+                { CoreKeywordDescriptors.RayDebugDisplay },
+                { CoreKeywordDescriptors.RayLightCookies },
+                { CoreKeywordDescriptors.ClusterLightLoop },
+                { CoreKeywordDescriptors.EvaluateSh },
+                { CoreKeywordDescriptors.RayReflectionScreen },
+            };
         }
         #endregion
 
@@ -985,6 +1103,8 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             const string kPBRGBufferPass = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/PBRGBufferPass.hlsl";
             const string kLightingMetaPass = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/LightingMetaPass.hlsl";
             const string k2DPass = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/PBR2DPass.hlsl";
+            const string kRaytracingIncludes = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/RayIncludes.hlsl";
+            const string kRaytracingForwardPass = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/RaytracingLitForwardPass.hlsl";
 
             public static readonly IncludeCollection Forward = new IncludeCollection
             {
@@ -1001,6 +1121,25 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 // Post-graph
                 { CoreIncludes.CorePostgraph },
                 { kForwardPass, IncludeLocation.Postgraph },
+            };
+
+            // PLASTIC
+            public static readonly IncludeCollection RaytracingLit = new IncludeCollection
+            {
+                // Pre-graph
+                { CoreIncludes.DOTSPregraph },
+                { CoreIncludes.FogPregraph },
+                { CoreIncludes.WriteRenderLayersPregraph },
+                { CoreIncludes.ProbeVolumePregraph },
+                { CoreIncludes.CorePregraph },
+                { kShadows, IncludeLocation.Pregraph },
+                { CoreIncludes.ShaderGraphPregraph },
+                { CoreIncludes.DBufferPregraph },
+                { kRaytracingIncludes, IncludeLocation.Pregraph },
+
+                // Post-graph
+                { CoreIncludes.RayCorePostgraph },
+                { kRaytracingForwardPass, IncludeLocation.Postgraph },
             };
 
             public static readonly IncludeCollection GBuffer = new IncludeCollection

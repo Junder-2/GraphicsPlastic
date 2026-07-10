@@ -462,11 +462,12 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
         public override void GetFields(ref TargetFieldContext context)
         {
+            bool isRaytracing = context.pass.referenceName.Equals("SHADERPASS_RAYTRACINGLIT");
             var descs = context.blocks.Select(x => x.descriptor);
             // Core fields
-            context.AddField(Fields.GraphVertex, descs.Contains(BlockFields.VertexDescription.Position) ||
+            context.AddField(Fields.GraphVertex, !isRaytracing && (descs.Contains(BlockFields.VertexDescription.Position) ||
                 descs.Contains(BlockFields.VertexDescription.Normal) ||
-                descs.Contains(BlockFields.VertexDescription.Tangent));
+                descs.Contains(BlockFields.VertexDescription.Tangent)));
             context.AddField(Fields.GraphPixel);
 
             // SubTarget fields
@@ -972,8 +973,15 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         {
             if (target.allowMaterialOverride)
                 pass.keywords.Add(CoreKeywordDescriptors.AlphaTestOn);
+            // PLASTIC
+            if (pass.referenceName.Equals("SHADERPASS_RAYTRACINGLIT") && target.alphaClip)
+            {
+                pass.keywords.Add(CoreKeywordDescriptors.RayAlphaTestOn);
+            }
             else if (target.alphaClip)
+            {
                 pass.defines.Add(CoreKeywordDescriptors.AlphaTestOn, 1);
+            }
         }
 
         internal static void AddLODCrossFadeControlToPass(ref PassDescriptor pass, UniversalTarget target)
@@ -1001,7 +1009,11 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 // setup target control via define
                 if (target.surfaceType == SurfaceType.Transparent)
                 {
-                    pass.defines.Add(CoreKeywordDescriptors.SurfaceTypeTransparent, 1);
+                    // PLASTIC
+                    if (pass.referenceName.Equals("SHADERPASS_RAYTRACINGLIT"))
+                        pass.keywords.Add(CoreKeywordDescriptors.RaySurfaceTypeTransparent);
+                    else
+                        pass.defines.Add(CoreKeywordDescriptors.SurfaceTypeTransparent, 1);
 
                     // alpha premultiply in shader only needed when alpha is different for diffuse & specular
                     if ((target.alphaMode == AlphaMode.Alpha || target.alphaMode == AlphaMode.Additive) && blendModePreserveSpecular)
@@ -1764,6 +1776,15 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             { Pragma.Fragment("frag") },
         };
 
+        // PLASTIC
+        public static readonly PragmaCollection Raytracing = new PragmaCollection
+        {
+            { Pragma.Target(ShaderModel.Target20) },
+            { Pragma.Raytracing("Raytracer") },
+            { Pragma.MultiCompileInstancing },
+            { Pragma.InstancingOptions(InstancingOptions.RenderingLayer) },
+        };
+
         public static readonly PragmaCollection _2DDefault = new PragmaCollection
         {
             { Pragma.Target(ShaderModel.Target20) },
@@ -1814,6 +1835,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         const string kRenderingLayers = "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl";
         const string kProbeVolumes = "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl";
 
+        // PLASTIC
+        const string kRaytracingVaryings = "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/RayVaryings.hlsl";
+
         public static readonly IncludeCollection CorePregraph = new IncludeCollection
         {
             { kColor, IncludeLocation.Pregraph },
@@ -1856,6 +1880,13 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         {
             { kShaderPass, IncludeLocation.Pregraph },
             { kVaryings, IncludeLocation.Postgraph },
+        };
+
+        // PLASTIC
+        public static readonly IncludeCollection RayCorePostgraph = new IncludeCollection
+        {
+            { kShaderPass, IncludeLocation.Pregraph },
+            { kRaytracingVaryings, IncludeLocation.Postgraph },
         };
 
         public static readonly IncludeCollection DepthOnly = new IncludeCollection
@@ -1977,6 +2008,12 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         public static readonly DefineCollection ScenePicking = new DefineCollection
         {
             { CoreKeywordDescriptors.ScenePickingPass, 1 },
+        };
+
+        public static readonly DefineCollection IsRaytracing = new DefineCollection
+        {
+            { CoreKeywordDescriptors.IsRaytracing, 1 },
+            { CoreKeywordDescriptors.UseRayLod, 1 },
         };
     }
     #endregion
@@ -2480,6 +2517,176 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             type = KeywordType.Boolean,
             definition = KeywordDefinition.MultiCompile,
             scope = KeywordScope.Global
+        };
+
+        // PLASTIC
+        public static readonly KeywordDescriptor IsRaytracing = new KeywordDescriptor()
+        {
+            displayName = "Is Raytracing",
+            referenceName = "IS_RAYTRACING",
+            type = KeywordType.Boolean,
+        };
+
+        public static readonly KeywordDescriptor UseRayLod = new KeywordDescriptor()
+        {
+            displayName = "Use RayLod",
+            referenceName = "USE_RAYLOD",
+            type = KeywordType.Boolean,
+        };
+
+        public static readonly KeywordDescriptor ReflectionScreen = new KeywordDescriptor()
+        {
+            displayName = "Reflection Screen",
+            referenceName = ShaderKeywordStrings.ReflectionScreen,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.Fragment,
+        };
+
+        public static readonly KeywordDescriptor ReflectionScreenSampling = new KeywordDescriptor()
+        {
+            displayName = "Reflection Screen Sampling",
+            referenceName = "",
+            type = KeywordType.Enum,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.Fragment,
+            entries = new KeywordEntry[]
+            {
+                new KeywordEntry() { displayName = "Point", referenceName = "" },
+                new KeywordEntry() { displayName = "Bilinear", referenceName = "REFLECTION_SCREEN_BILINEAR" },
+                new KeywordEntry() { displayName = "Trilinear", referenceName = "REFLECTION_SCREEN_TRILINEAR" },
+                new KeywordEntry() { displayName = "Bicubic", referenceName = "REFLECTION_SCREEN_BICUBIC" },
+            }
+        };
+
+        public static readonly KeywordDescriptor ReflectionScreenMips = new KeywordDescriptor()
+        {
+            displayName = "Reflection Screen Mips",
+            referenceName = ShaderKeywordStrings.ReflectionScreenMipMaps,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.Fragment,
+        };
+
+        public static readonly KeywordDescriptor RayReflectionScreen = new KeywordDescriptor()
+        {
+            displayName = "Reflection Screen",
+            referenceName = ShaderKeywordStrings.ReflectionScreen,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayLightCookies = new KeywordDescriptor()
+        {
+            displayName = "Light Cookies",
+            referenceName = "_LIGHT_COOKIES",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayDebugDisplay = new KeywordDescriptor()
+        {
+            displayName = "Debug Display",
+            referenceName = "DEBUG_DISPLAY",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayLightLayers = new KeywordDescriptor()
+        {
+            displayName = "Light Layers",
+            referenceName = "_LIGHT_LAYERS",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayShadowsSoft = new KeywordDescriptor()
+        {
+            displayName = "Soft Shadows",
+            referenceName = "",
+            type = KeywordType.Enum,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+            entries = new KeywordEntry[]
+            {
+                new KeywordEntry() { displayName = "Off", referenceName = "" },
+                new KeywordEntry() { displayName = "Soft Shadows Per Light", referenceName = "SHADOWS_SOFT" },
+                new KeywordEntry() { displayName = "Soft Shadows Low", referenceName = "SHADOWS_SOFT_LOW" },
+                new KeywordEntry() { displayName = "Soft Shadows Medium", referenceName = "SHADOWS_SOFT_MEDIUM" },
+                new KeywordEntry() { displayName = "Soft Shadows High", referenceName = "SHADOWS_SOFT_HIGH" },
+            }
+        };
+
+        public static readonly KeywordDescriptor RayAdditionalLightShadows = new KeywordDescriptor()
+        {
+            displayName = "Additional Light Shadows",
+            referenceName = "_ADDITIONAL_LIGHT_SHADOWS",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayReflectionProbeBlending = new KeywordDescriptor()
+        {
+            displayName = "Reflection Probe Blending",
+            referenceName = "_REFLECTION_PROBE_BLENDING",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayReflectionProbeBoxProjection = new KeywordDescriptor()
+        {
+            displayName = "Reflection Probe Box Projection",
+            referenceName = "_REFLECTION_PROBE_BOX_PROJECTION",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.Fragment,
+        };
+
+        public static readonly KeywordDescriptor RayReflectionProbeAtlas = new KeywordDescriptor()
+        {
+            displayName = "Reflection Probe Atlas",
+            referenceName = "_REFLECTION_PROBE_ATLAS",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RayAlphaTestOn = new KeywordDescriptor()
+        {
+            displayName = ShaderKeywordStrings._ALPHATEST_ON,
+            referenceName = ShaderKeywordStrings._ALPHATEST_ON,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.RayTracing,
+        };
+
+        public static readonly KeywordDescriptor RaySurfaceTypeTransparent = new KeywordDescriptor()
+        {
+            displayName = ShaderKeywordStrings._SURFACE_TYPE_TRANSPARENT,
+            referenceName = ShaderKeywordStrings._SURFACE_TYPE_TRANSPARENT,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Global, // needs to match HDRP
+            stages = KeywordShaderStage.RayTracing,
         };
     }
     #endregion

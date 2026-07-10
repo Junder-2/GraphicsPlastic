@@ -257,7 +257,7 @@ namespace UnityEngine.Rendering.Universal
             cmd.SetRayTracingTextureParam(rayTracingShader, id_ShadowRenderTarget,
                 currentSettings.raytraceShadows ? shadowTarget : m_ReflectionTargetHandle);
 
-            cmd.SetRayTracingShaderPass(rayTracingShader, "MyRaytracingPass");
+            cmd.SetRayTracingShaderPass(rayTracingShader, "RaytracingLit");
             cmd.SetRayTracingAccelerationStructure(rayTracingShader, id_AccelerationStructure,
                 accelerationStructure);
 
@@ -975,7 +975,7 @@ namespace UnityEngine.Rendering.Universal
                         cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_ReflectionRenderTarget,
                             data.reflectionTarget);
 
-                        cmd.SetRayTracingShaderPass(passData.rayTracingShader, "MyRaytracingPass");
+                        cmd.SetRayTracingShaderPass(passData.rayTracingShader, "RaytracingLit");
                         cmd.SetRayTracingAccelerationStructure(passData.rayTracingShader, id_AccelerationStructure,
                             passData.accelerationStructure);
 

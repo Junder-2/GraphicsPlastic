@@ -126,7 +126,7 @@ void frag(
 
     #ifdef _SPECULAR_SETUP
         float3 specular = surfaceDescription.Specular;
-        float metallic = 1;
+        float metallic = 0;
     #else
         float3 specular = 0;
         float metallic = surfaceDescription.Metallic;

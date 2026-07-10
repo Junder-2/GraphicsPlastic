@@ -69,6 +69,7 @@ $Varyings.shadowCoord: #define VARYINGS_NEED_SHADOW_COORD
 $Varyings.cullFace: #define VARYINGS_NEED_CULLFACE
 $Varyings.instanceID: #define VARYINGS_NEED_INSTANCEID
 $Varyings.diffuseGIData0: #define VARYINGS_NEED_SIX_WAY_DIFFUSE_GI_DATA
+$Varyings.rayLod: #define USE_RAYLOD
 $features.graphVertex: #define FEATURES_GRAPH_VERTEX
 $Universal.UseLegacySpriteBlocks: #define UNIVERSAL_USELEGACYSPRITEBLOCKS
 $splice(PassInstancing)

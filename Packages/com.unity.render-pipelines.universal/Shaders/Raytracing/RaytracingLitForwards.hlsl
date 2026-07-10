@@ -11,11 +11,11 @@ void anyHit (inout RayPayload rayPayload , in AttributeData attributeData)
         float3x3 objectToWorld = (float3x3)ObjectToWorld3x4();
         float3 worldNormal = normalize(mul(objectToWorld, currentvertex.normalOS));
 
-        float LOD = RayCalcLOD(currentvertex, rayPayload.rayConeWidth, WorldRayDirection(), worldNormal);
+        float LOD = RayCalcLOD(currentvertex.triangleArea, currentvertex.texCoord0Area, rayPayload.rayConeWidth, WorldRayDirection(), worldNormal);
 
         half2 uv = TRANSFORM_TEX(currentvertex.texCoord0, _BaseMap);
 
-        half alpha = _BaseColor.a*SampleTex2D(_BaseMap, sampler_BaseMap, uv, _BaseMap_ST.xy, LOD).a;
+        half alpha = _BaseColor.a*RaySampleTex2D(_BaseMap, sampler_BaseMap, uv, LOD).a;
 
         if(alpha <= _Cutoff)
             IgnoreHit();
@@ -40,7 +40,7 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
 
     rayPayload.rayConeWidth += rayPayload.rayConeSpreadAngle*RayTCurrent();
 
-    float LOD = RayCalcLOD(currentvertex, rayPayload.rayConeWidth, rayDir, worldNormal);
+    float LOD = RayCalcLOD(currentvertex.triangleArea, currentvertex.texCoord0Area, rayPayload.rayConeWidth, rayDir, worldNormal);
 
     SurfaceData surfaceData;
     InitializePlasticLitSurfaceData(uv, LOD, surfaceData);
@@ -51,7 +51,7 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
     }
 
     #ifdef _NORMALMAP
-    RayCalcNormalMap(surfaceData.normalTS, currentvertex, worldNormal);
+    RayCalcNormalMap(surfaceData.normalTS, currentvertex.normalOS, currentvertex.tangentOS, worldNormal);
     #endif
     float3 normalWS = NormalizeNormalPerPixel(worldNormal);
     normalWS *= currentvertex.frontFace ? 1 : -1;
@@ -134,7 +134,7 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
     // inputData.bakedGI = SampleSH(inputData.normalWS);
     inputData.bakedGI = SAMPLE_GI(half2(0.f, half2(0.f)), inputData.positionWS, inputData.normalWS);
 
-    rayPayload.color = RayUniversalFragmentPBR(inputData, surfaceData, rayPayload);
+    rayPayload.color = RayUniversalFragmentPBR(inputData, surfaceData, rayPayload).rgb;
 
     // stop if we have reached max recursion depth
     if(rayPayload.depth + 1 >= gMaxDepth)

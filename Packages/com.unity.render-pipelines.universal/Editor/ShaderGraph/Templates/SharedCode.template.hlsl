@@ -89,6 +89,7 @@ SurfaceDescriptionInputs BuildSurfaceDescriptionInputs(Varyings input)
 #endif
     $SurfaceDescriptionInputs.FaceSign:                  BUILD_SURFACE_DESCRIPTION_INPUTS_OUTPUT_FACESIGN
 #undef BUILD_SURFACE_DESCRIPTION_INPUTS_OUTPUT_FACESIGN
+    $SurfaceDescriptionInputs.RayLod:                  output.RayLod = input.rayLod;
 
         return output;
 }

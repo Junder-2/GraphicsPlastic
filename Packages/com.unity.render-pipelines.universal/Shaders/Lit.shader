@@ -198,10 +198,10 @@ Shader "Universal Render Pipeline/Lit"
         // ray tracing pass
         Pass
         {
-            Name "MyRaytracingPass"
+            Name "RaytracingLit"
             Tags
             {
-                "LightMode" = "MyRaytracingPass"
+                "LightMode" = "RaytracingLit"
             }
 
             HLSLPROGRAM
@@ -244,7 +244,6 @@ Shader "Universal Render Pipeline/Lit"
             #pragma multi_compile_raytracing _ _LIGHT_COOKIES
             #pragma multi_compile _ _LIGHT_LAYERS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
-            #pragma multi_compile _ _LIGHT_LAYERS
             #pragma multi_compile _ _REFLECTIONS_SHADOWS
             #pragma multi_compile _ _REFLECTION_SCREEN
             #include_with_pragmas "Packages/com.unity.render-pipelines.core/ShaderLibrary/FoveatedRenderingKeywords.hlsl"

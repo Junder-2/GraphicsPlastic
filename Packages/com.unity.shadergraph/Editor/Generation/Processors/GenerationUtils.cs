@@ -1113,6 +1113,12 @@ namespace UnityEditor.ShaderGraph
             using (surfaceDescriptionFunction.BlockScope())
             {
                 surfaceDescriptionFunction.AppendLine("{0} surface = ({0})0;", surfaceDescriptionName);
+
+                // PLASTIC
+                surfaceDescriptionFunction.AppendLine("#if defined(USE_RAYLOD)");
+                surfaceDescriptionFunction.AppendLine("float RayLod = IN.RayLod;");
+                surfaceDescriptionFunction.AppendLine("#endif");
+
                 for (int i = 0; i < nodes.Count; i++)
                 {
                     GenerateDescriptionForNode(nodes[i], keywordPermutationsPerNode[i], functionRegistry, surfaceDescriptionFunction,

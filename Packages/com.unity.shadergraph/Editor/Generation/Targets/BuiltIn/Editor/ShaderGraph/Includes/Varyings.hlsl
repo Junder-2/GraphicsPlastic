@@ -12,9 +12,11 @@ Varyings BuildVaryings(Attributes input)
 {
     Varyings output = (Varyings)0;
 
+#if !defined(IS_RAYTRACING)
     UNITY_SETUP_INSTANCE_ID(input);
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+#endif
 
 #if defined(FEATURES_GRAPH_VERTEX)
     // Evaluate Vertex Graph

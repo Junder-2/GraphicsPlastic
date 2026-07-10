@@ -6,7 +6,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/DebugMipmapStreamingMacros.hlsl"
-#include "RaytraceCommon.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RaytraceCommon.hlsl"
 
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
@@ -28,7 +28,7 @@ half Alpha(half albedoAlpha, half4 color, half cutoff)
     half alpha = color.a;
 #endif
 
-    alpha = AlphaDiscard(alpha, cutoff);
+    alpha = RayAlphaClip(alpha, cutoff);
 
     return alpha;
 }

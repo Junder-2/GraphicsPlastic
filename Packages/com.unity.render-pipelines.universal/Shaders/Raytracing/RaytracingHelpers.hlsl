@@ -24,28 +24,16 @@ bool RayShouldReflect(float reflection, RayPayload rayPayload)
     return shouldReflect;
 }
 
-float RayCalcLOD(IntersectionVertex vertex, float coneWidth, float3 rayDir, float3 normal)
-{
-    float texCoordArea = vertex.texCoord0Area;
-    float triangleArea = vertex.triangleArea;
-
-    float lambda = log2(texCoordArea/triangleArea)*.5;
-    lambda += log2(abs(coneWidth));
-    lambda -= log2(abs(dot(rayDir, normal)));
-
-    return lambda-1.f;
-}
-
-void RayCalcNormalMap(float3 tangentNormal, IntersectionVertex currentvertex, inout float3 worldNormal)
+void RayCalcNormalMap(float3 normalTS, float3 normalOS, float3 tangentOS, inout float3 worldNormal)
 {
     float3x3 objectToWorld = (float3x3)ObjectToWorld3x4();
 
-    float3 worldBinormal = normalize(mul(objectToWorld, cross(currentvertex.normalOS, currentvertex.tangentOS)));
-    float3 worldTangent = normalize(mul(objectToWorld, currentvertex.tangentOS));
+    float3 worldBinormal = normalize(mul(objectToWorld, cross(normalOS, tangentOS)));
+    float3 worldTangent = normalize(mul(objectToWorld, tangentOS));
 
     float3x3 TBN = float3x3(normalize(worldTangent), normalize(worldBinormal), normalize(worldNormal));
     TBN = transpose(TBN);
 
-    worldNormal = mul(TBN, tangentNormal);
+    worldNormal = mul(TBN, normalTS);
 }
 #endif

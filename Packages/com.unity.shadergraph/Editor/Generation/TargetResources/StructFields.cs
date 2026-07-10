@@ -91,6 +91,9 @@ namespace UnityEditor.ShaderGraph
             public static FieldDescriptor elementToWorld0 = new FieldDescriptor(Varyings.name, "elementToWorld0", "VARYINGS_NEED_ELEMENT_TO_WORLD", ShaderValueType.Float4, subscriptOptions: StructFieldOptions.Optional, interpolation: "nointerpolation");
             public static FieldDescriptor elementToWorld1 = new FieldDescriptor(Varyings.name, "elementToWorld1", "VARYINGS_NEED_ELEMENT_TO_WORLD", ShaderValueType.Float4, subscriptOptions: StructFieldOptions.Optional, interpolation: "nointerpolation");
             public static FieldDescriptor elementToWorld2 = new FieldDescriptor(Varyings.name, "elementToWorld2", "VARYINGS_NEED_ELEMENT_TO_WORLD", ShaderValueType.Float4, subscriptOptions: StructFieldOptions.Optional, interpolation: "nointerpolation");
+
+            // PLASTIC
+            public static FieldDescriptor rayLod = new FieldDescriptor(Attributes.name, "rayLod", "", ShaderValueType.Float, "", subscriptOptions: StructFieldOptions.Optional);
         }
 
         public struct VertexDescriptionInputs
@@ -309,6 +312,9 @@ namespace UnityEditor.ShaderGraph
             // VFX
             public static FieldDescriptor worldToElement = new FieldDescriptor(SurfaceDescriptionInputs.name, "worldToElement", "", ShaderValueType.Matrix4, subscriptOptions: StructFieldOptions.Optional);
             public static FieldDescriptor elementToWorld = new FieldDescriptor(SurfaceDescriptionInputs.name, "elementToWorld", "", ShaderValueType.Matrix4, subscriptOptions: StructFieldOptions.Optional);
+
+            // PLASTIC
+            public static FieldDescriptor rayLod = new FieldDescriptor(SurfaceDescriptionInputs.name, "RayLod", "", ShaderValueType.Float, subscriptOptions: StructFieldOptions.Optional);
         }
     }
 }
