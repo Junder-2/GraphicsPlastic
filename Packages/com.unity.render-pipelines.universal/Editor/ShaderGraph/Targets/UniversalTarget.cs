@@ -2571,6 +2571,22 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             stages = KeywordShaderStage.Fragment,
         };
 
+        public static readonly KeywordDescriptor RayFaceMode = new KeywordDescriptor()
+        {
+            displayName = "Ray Face Mode",
+            referenceName = "",
+            type = KeywordType.Enum,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Local,
+            stages = KeywordShaderStage.RayTracing,
+            entries = new KeywordEntry[]
+            {
+                new KeywordEntry() { displayName = "Front", referenceName = "" },
+                new KeywordEntry() { displayName = "Back", referenceName = "RENDER_FACE_BACK" },
+                new KeywordEntry() { displayName = "Double", referenceName = "RENDER_FACE_DOUBLE" },
+            }
+        };
+
         public static readonly KeywordDescriptor RayReflectionScreen = new KeywordDescriptor()
         {
             displayName = "Reflection Screen",

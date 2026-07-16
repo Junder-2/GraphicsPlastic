@@ -960,10 +960,32 @@ namespace UnityEditor
         {
             UpdateMaterialSurfaceOptions(material, automaticRenderQueue: true);
 
+            // PLASTIC
             bool isPlasticLighting = false;
             if (material.HasProperty(Property.LightingType))
                 isPlasticLighting = ((LightingType)material.GetFloat(Property.LightingType)) == LightingType.Plastic;
             CoreUtils.SetKeyword(material, "_PLASTIC_LIGHTING_SETUP", isPlasticLighting);
+
+            if (material.HasProperty(Property.CullMode))
+            {
+                var cullMode = (RenderFace)material.GetFloat(Property.CullMode);
+                switch (cullMode)
+                {
+                    case RenderFace.Back:
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderBack, true);
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderDouble, false);
+                        break;
+                    case RenderFace.Both:
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderDouble, true);
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderBack, false);
+                        break;
+                    default:
+                    case RenderFace.Front:
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderBack, false);
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderDouble, false);
+                        break;
+                }
+            }
 
             // Setup double sided GI based on Cull state
             if (material.HasProperty(Property.CullMode))
@@ -1189,6 +1211,36 @@ namespace UnityEditor
                 renderQueue += (int)material.GetFloat(Property.QueueOffset);
 
             automaticRenderQueue = renderQueue;
+
+            // PLASTIC
+            if (material.HasProperty(Property.DummyCullMode))
+            {
+                var cullMode = (RenderFace)material.GetFloat(Property.DummyCullMode);
+                switch (cullMode)
+                {
+                    case RenderFace.Back:
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderBack, true);
+                        break;
+                    case RenderFace.Both:
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.RenderDouble, true);
+                        break;
+                    case RenderFace.Front:
+                    default:
+                        break;
+                }
+            }
+
+            if (material.HasProperty(Property.DummyAlphaClip))
+            {
+                float clip = material.GetFloat(Property.DummyAlphaClip);
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings._ALPHATEST_ON, clip >= 0.5);
+            }
+
+            if (material.HasProperty(Property.DummySurfaceType))
+            {
+                SurfaceType surfaceType = (SurfaceType)material.GetFloat(Property.DummySurfaceType);
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings._SURFACE_TYPE_TRANSPARENT, surfaceType == SurfaceType.Transparent);
+            }
         }
 
         /// <summary>

@@ -220,7 +220,7 @@ bool PrepareVFXModification(inout Attributes input, inout Varyings output, inout
 }
 #endif
 
-Varyings BuildVaryings(RayPayload rayPayload, AttributeData attributeData)
+Varyings BuildVaryings(RayPayload rayPayload, AttributeData attributeData, out bool outFrontFace)
 {
     float3 rayOrigin = WorldRayOrigin();
     float3 rayDir = WorldRayDirection();
@@ -228,6 +228,8 @@ Varyings BuildVaryings(RayPayload rayPayload, AttributeData attributeData)
     // compute vertex data on ray/triangle intersection
     IntersectionVertex currentvertex;
     GetCurrentIntersectionVertex(attributeData, currentvertex, rayDir);
+
+    outFrontFace = currentvertex.frontFace;
 
     Varyings output = (Varyings)0;
 

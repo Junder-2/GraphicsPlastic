@@ -491,7 +491,12 @@ namespace UnityEngine.Rendering.Universal
                     alphaTestedMaterials = RayTracingSubMeshFlags.Enabled,
                     transparentMaterials = RayTracingSubMeshFlags.Enabled
                 },
-                triangleCullingConfig = { frontTriangleCounterClockwise = false, checkDoubleSidedGIMaterial = true, },
+                triangleCullingConfig =
+                {
+                    frontTriangleCounterClockwise = false,
+                    checkDoubleSidedGIMaterial = true,
+                    optionalDoubleSidedShaderKeywords = new[] { ShaderKeywordStrings.RenderBack, ShaderKeywordStrings.RenderDouble },
+                },
                 transparentMaterialConfig =
                 {
                     optionalShaderKeywords = new[] { ShaderKeywordStrings._SURFACE_TYPE_TRANSPARENT }

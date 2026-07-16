@@ -1503,6 +1503,9 @@ namespace UnityEngine.Rendering.Universal
         /// <summary> Keyword used for screen space reflection texture. </summary>
         public const string ReflectionScreen = "_REFLECTION_SCREEN";
 
+        public const string RenderBack = "_RENDER_FACE_BACK";
+        public const string RenderDouble = "_RENDER_FACE_DOUBLE";
+
         public const string ReflectionScreenBilinear = "_REFLECTION_SCREEN_BILINEAR";
         public const string ReflectionScreenTrilinear = "_REFLECTION_SCREEN_TRILINEAR";
         public const string ReflectionScreenBicubic = "_REFLECTION_SCREEN_BICUBIC";

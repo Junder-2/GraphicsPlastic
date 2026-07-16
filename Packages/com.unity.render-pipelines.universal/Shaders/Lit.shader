@@ -213,6 +213,7 @@ Shader "Universal Render Pipeline/Lit"
             #pragma shader_feature_local _PARALLAXMAP
             #pragma shader_feature_local _RECEIVE_SHADOWS_OFF
             #pragma shader_feature_local _ _DETAIL_MULX2 _DETAIL_SCALED
+            #pragma shader_feature_local_raytracing _ _RENDER_FACE_BACK _RENDER_FACE_DOUBLE
             #pragma shader_feature_local_raytracing _SURFACE_TYPE_TRANSPARENT
             #pragma shader_feature_local_raytracing _ALPHATEST_ON
             #pragma shader_feature_local_raytracing _ _ALPHAPREMULTIPLY_ON _ALPHAMODULATE_ON

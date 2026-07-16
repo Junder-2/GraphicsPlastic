@@ -7,9 +7,24 @@ void anyHit(inout RayPayload rayPayload, in AttributeData attributeData)
         float coneWidth = rayPayload.rayConeWidth;
         rayPayload.rayConeWidth += rayPayload.rayConeSpreadAngle*RayTCurrent();
 
-        Varyings input = BuildVaryings(rayPayload, attributeData);
+        bool isFrontFace;
+        Varyings input = BuildVaryings(rayPayload, attributeData, isFrontFace);
         SurfaceDescription surfaceDescription = BuildSurfaceDescription(input);
         rayPayload.rayConeWidth = coneWidth;
+
+    #ifdef _RENDER_FACE_BACK
+        if (isFrontFace)
+        {
+            IgnoreHit();
+            return;
+        }
+    #elif !defined(_RENDER_FACE_DOUBLE)
+        if (!isFrontFace)
+        {
+            IgnoreHit();
+            return;
+        }
+    #endif
 
         if(surfaceDescription.Alpha <= surfaceDescription.AlphaClipThreshold)
             IgnoreHit();
@@ -28,7 +43,8 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
 
     rayPayload.rayConeWidth += rayPayload.rayConeSpreadAngle*RayTCurrent();
 
-    Varyings input = BuildVaryings(rayPayload, attributeData);
+    bool isFrontFace;
+    Varyings input = BuildVaryings(rayPayload, attributeData, isFrontFace);
 
     SurfaceDescription surfaceDescription = BuildSurfaceDescription(input);
 

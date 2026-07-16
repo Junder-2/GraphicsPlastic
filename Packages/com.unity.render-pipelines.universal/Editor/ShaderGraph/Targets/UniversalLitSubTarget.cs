@@ -201,9 +201,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
                 // setup properties using the defaults
                 collector.AddFloatProperty(Property.LightingType, (float)target.lightingType); // PLASTIC
-                // collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
+                collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
                 collector.AddFloatProperty(Property.BlendMode, (float)target.alphaMode);
-                // collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
+                collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
                 collector.AddFloatProperty(Property.BlendModePreserveSpecular, blendModePreserveSpecular ? 1.0f : 0.0f);
                 collector.AddFloatProperty(Property.SrcBlend, 1.0f);    // always set by material inspector, ok to have incorrect values here
                 collector.AddFloatProperty(Property.DstBlend, 0.0f);    // always set by material inspector, ok to have incorrect values here
@@ -224,9 +224,10 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             collector.AddFloatProperty(Property.QueueOffset, 0.0f);
             collector.AddFloatProperty(Property.QueueControl, -1.0f);
 
-            // PLASTIC Needed for anyhit
-            collector.AddFloatProperty(Property.SurfaceType, (float)target.surfaceType);
-            collector.AddFloatProperty(Property.AlphaClip, target.alphaClip ? 1.0f : 0.0f);
+            // PLASTIC Needed for raytracing
+            collector.AddFloatProperty(Property.DummySurfaceType, (float)target.surfaceType);
+            collector.AddFloatProperty(Property.DummyAlphaClip, target.alphaClip ? 1.0f : 0.0f);
+            collector.AddFloatProperty(Property.DummyCullMode, (float)target.renderFace);    // render face enum is designed to directly pass as a cull mode
 
             if (IsSpacewarpSupported())
                 collector.AddFloatProperty(Property.XrMotionVectorsPass, 1.0f);
@@ -635,7 +636,6 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 {
                     result.keywords.Add(CoreKeywordDescriptors.RayFaceMode);
                 }
-
 
                 return result;
             }

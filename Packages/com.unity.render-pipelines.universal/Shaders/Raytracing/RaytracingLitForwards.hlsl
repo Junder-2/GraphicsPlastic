@@ -5,11 +5,25 @@ void anyHit (inout RayPayload rayPayload , in AttributeData attributeData)
 {
     #ifdef _ALPHATEST_ON
         IntersectionVertex currentvertex;
-        GetCurrentIntersectionVertex(attributeData, currentvertex);
+        float3 rayDir = WorldRayDirection();
+        GetCurrentIntersectionVertex(attributeData, currentvertex, rayDir);
 
-        half3 worldPos = WorldRayOrigin() + RayTCurrent()* WorldRayDirection();
         float3x3 objectToWorld = (float3x3)ObjectToWorld3x4();
         float3 worldNormal = normalize(mul(objectToWorld, currentvertex.normalOS));
+
+    #ifdef _RENDER_FACE_BACK
+        if (currentvertex.frontFace)
+        {
+            IgnoreHit();
+            return;
+        }
+    #elif !defined(_RENDER_FACE_DOUBLE)
+        if (!currentvertex.frontFace)
+        {
+            IgnoreHit();
+            return;
+        }
+    #endif
 
         float LOD = RayCalcLOD(currentvertex.triangleArea, currentvertex.texCoord0Area, rayPayload.rayConeWidth, WorldRayDirection(), worldNormal);
 
