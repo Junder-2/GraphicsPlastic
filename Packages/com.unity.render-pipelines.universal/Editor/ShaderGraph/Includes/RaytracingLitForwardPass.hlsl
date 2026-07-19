@@ -144,64 +144,64 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
 
     float3 reflectDir = reflect(rayDir, inputData.normalWS);
 
-    if(rayPayload.depth == 0)
-    {
-        #ifdef _REFLECTION_SCREEN
-        half3 color = RayReflectionCalc(inputData.positionWS, reflectDir, rayPayload);
-        if (color.x < 0.h)
-        {
-            half roughness = 1.h - surface.smoothness;
-            if (_REFLECTION_PROBE_BLENDING)
-            {
-                color = CalculateIrradianceFromReflectionProbes(reflectDir, inputData.positionWS, roughness, half2(1.f, 1.f));
-            }
-            else
-            {
-                if (_REFLECTION_PROBE_BOX_PROJECTION)
-                {
-                    #if defined(REFLECTION_PROBE_ROTATION)
-                    float3 probeCenterPosWS0 = unity_SpecCube0_BoxMin.xyz + (unity_SpecCube0_BoxMax.xyz - unity_SpecCube0_BoxMin.xyz) / 2;
-                    float3 rotPosWS0 = RotateVectorByQuat(unity_SpecCube0_Rotation, positionWS - probeCenterPosWS0) + probeCenterPosWS0;
-                    half3 rotReflectVector0 = RotateVectorByQuat(unity_SpecCube0_Rotation, reflectVector);
-                    float4 inverseRotation0 = -unity_SpecCube0_Rotation;
-                    inverseRotation0.w = -inverseRotation0.w;
-                    reflectVector = BoxProjectedCubemapDirection(rotReflectVector0, rotPosWS0, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
-                    reflectVector = RotateVectorByQuat(inverseRotation0, reflectVector);
-                    #else
-                    reflectDir = BoxProjectedCubemapDirection(reflectDir, inputData.positionWS, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
-                    #endif
-                }
-                half mip = PerceptualRoughnessToMipmapLevel(roughness);
-                half4 encodedIrradiance = half4(SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, reflectDir, mip));
-
-                color = DecodeHDREnvironment(encodedIrradiance, unity_SpecCube0_HDR);
-            }
-        }
-        rayPayload.color = color;
-        #endif
-
-        Light mainLight = GetMainLight();
-
-        #ifdef _MAIN_LIGHT_SHADOWS_SCREEN
-            rayPayload.shadow = CalculateShadowAttenuation(inputData.positionWS, mainLight.direction, 100.f);
-
-            /*#if defined(_ADDITIONAL_LIGHTS)
-            uint pixelLightCount = GetAdditionalLightsCount();
-
-            LIGHT_LOOP_BEGIN(pixelLightCount)
-                half4 lightVector = GetAdditionalLightDistance(lightIndex, inputData.positionWS);
-
-                if(lightVector.w > 0.f)
-                {
-                    half shadow = CalculateShadowAttenuation(inputData.positionWS, normalize(lightVector.xyz), length(lightVector.xyz));
-                    rayPayload.shadow *= max(shadow, lightVector.w);
-                }
-            LIGHT_LOOP_END
-            #endif*/
-        #endif
-
-        return;
-    }
+//     if(rayPayload.depth == 0)
+//     {
+//         #ifdef _REFLECTION_SCREEN
+//         half3 color = RayReflectionCalc(inputData.positionWS, reflectDir, rayPayload);
+//         if (color.x < 0.h)
+//         {
+//             half roughness = 1.h - surface.smoothness;
+//             if (_REFLECTION_PROBE_BLENDING)
+//             {
+//                 color = CalculateIrradianceFromReflectionProbes(reflectDir, inputData.positionWS, roughness, half2(1.f, 1.f));
+//             }
+//             else
+//             {
+//                 if (_REFLECTION_PROBE_BOX_PROJECTION)
+//                 {
+//                     #if defined(REFLECTION_PROBE_ROTATION)
+//                     float3 probeCenterPosWS0 = unity_SpecCube0_BoxMin.xyz + (unity_SpecCube0_BoxMax.xyz - unity_SpecCube0_BoxMin.xyz) / 2;
+//                     float3 rotPosWS0 = RotateVectorByQuat(unity_SpecCube0_Rotation, positionWS - probeCenterPosWS0) + probeCenterPosWS0;
+//                     half3 rotReflectVector0 = RotateVectorByQuat(unity_SpecCube0_Rotation, reflectVector);
+//                     float4 inverseRotation0 = -unity_SpecCube0_Rotation;
+//                     inverseRotation0.w = -inverseRotation0.w;
+//                     reflectVector = BoxProjectedCubemapDirection(rotReflectVector0, rotPosWS0, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
+//                     reflectVector = RotateVectorByQuat(inverseRotation0, reflectVector);
+//                     #else
+//                     reflectDir = BoxProjectedCubemapDirection(reflectDir, inputData.positionWS, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
+//                     #endif
+//                 }
+//                 half mip = PerceptualRoughnessToMipmapLevel(roughness);
+//                 half4 encodedIrradiance = half4(SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, reflectDir, mip));
+//
+//                 color = DecodeHDREnvironment(encodedIrradiance, unity_SpecCube0_HDR);
+//             }
+//         }
+//         rayPayload.color = color;
+//         #endif
+//
+//         Light mainLight = GetMainLight();
+//
+//         #ifdef _MAIN_LIGHT_SHADOWS_SCREEN
+//             rayPayload.shadow = CalculateShadowAttenuation(inputData.positionWS, mainLight.direction, 100.f);
+//
+//             /*#if defined(_ADDITIONAL_LIGHTS)
+//             uint pixelLightCount = GetAdditionalLightsCount();
+//
+//             LIGHT_LOOP_BEGIN(pixelLightCount)
+//                 half4 lightVector = GetAdditionalLightDistance(lightIndex, inputData.positionWS);
+//
+//                 if(lightVector.w > 0.f)
+//                 {
+//                     half shadow = CalculateShadowAttenuation(inputData.positionWS, normalize(lightVector.xyz), length(lightVector.xyz));
+//                     rayPayload.shadow *= max(shadow, lightVector.w);
+//                 }
+//             LIGHT_LOOP_END
+//             #endif*/
+//         #endif
+//
+//         return;
+//     }
 
     inputData.viewDirectionWS = normalize(-rayDir);
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);

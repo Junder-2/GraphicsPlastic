@@ -57,15 +57,33 @@ namespace UnityEngine.Rendering.Universal.Internal
 #endif
         }
 
+        // PLASTIC
+        public enum NormalFormatQuality
+        {
+            Default,
+            High,
+            Medium,
+            Low,
+        }
+
+        private static NormalFormatQuality formatQuality = NormalFormatQuality.Default;
+
+        public static void ForceQuality(NormalFormatQuality quality)
+        {
+            formatQuality = quality;
+        }
+
         /// <summary>
         /// Finds the format to use for the normals texture.
         /// </summary>
         /// <returns>The GraphicsFormat to use with the Normals texture.</returns>
         public static GraphicsFormat GetGraphicsFormat()
         {
-            if (SystemInfo.IsFormatSupported(GraphicsFormat.R8G8B8A8_SNorm, GraphicsFormatUsage.Render))
+            if (SystemInfo.IsFormatSupported(GraphicsFormat.R8G8B8A8_SNorm, GraphicsFormatUsage.Render)
+                && formatQuality is NormalFormatQuality.Default or NormalFormatQuality.Low)
                 return GraphicsFormat.R8G8B8A8_SNorm; // Preferred format
-            else if (SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormatUsage.Render))
+            else if (SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormatUsage.Render)
+                     && formatQuality is NormalFormatQuality.Default or NormalFormatQuality.Medium)
                 return GraphicsFormat.R16G16B16A16_SFloat; // fallback
             else
                 return GraphicsFormat.R32G32B32A32_SFloat; // fallback

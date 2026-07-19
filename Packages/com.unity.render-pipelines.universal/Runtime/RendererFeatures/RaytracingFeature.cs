@@ -1,10 +1,13 @@
 using System;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.Universal.Internal;
 using UnityEngine.Serialization;
 
 namespace UnityEngine.Rendering.Universal
 {
+    using NormalFormatQuality = DepthNormalOnlyPass.NormalFormatQuality;
+
     [Serializable]
     internal class RaytracingSettings
     {
@@ -20,6 +23,7 @@ namespace UnityEngine.Rendering.Universal
 
         [SerializeField] internal RenderMode renderMode = RenderMode.FullRes;
         [SerializeField] internal SamplingMode samplingMode = SamplingMode.Point;
+        [SerializeField] internal NormalFormatQuality normalFormatQuality = NormalFormatQuality.Default;
         [SerializeField, Range(0, 300)] internal int targetFrameRate;
 
         [SerializeField] internal bool generateReflectionMips;

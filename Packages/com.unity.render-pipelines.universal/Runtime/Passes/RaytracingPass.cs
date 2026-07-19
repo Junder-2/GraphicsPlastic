@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.Universal.Internal;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -41,12 +42,14 @@ namespace UnityEngine.Rendering.Universal
         private static readonly int id_ClipDistance = Shader.PropertyToID("gClipDistance");
         private static readonly int id_LODBias = Shader.PropertyToID("gLODBias");
 
-        private static readonly int id_NearClip = Shader.PropertyToID("_NearClip");
-        private static readonly int id_PixelSpreadAngle = Shader.PropertyToID("_PixelSpreadAngle");
+        private static readonly int id_CameraParams = Shader.PropertyToID("_CameraParams");
+        private static readonly int id_ZBufferParams = Shader.PropertyToID("_ZBufferParams");
         private static readonly int id_CameraToWorld = Shader.PropertyToID("_CameraToWorld");
         private static readonly int id_CameraInverseProjection = Shader.PropertyToID("_CameraInverseProjection");
         private static readonly int id_ReflectionRenderTarget = Shader.PropertyToID("_ReflectionRenderTarget");
         private static readonly int id_ShadowRenderTarget = Shader.PropertyToID("_ShadowRenderTarget");
+        private static readonly int id_SceneDepthTexture = Shader.PropertyToID("_CameraDepthTexture");
+        private static readonly int id_SceneNormalsTexture = Shader.PropertyToID("_CameraNormalsTexture");
         private static readonly int id_WriteReflections = Shader.PropertyToID("_WriteReflections");
         private static readonly int id_WriteShadows = Shader.PropertyToID("_WriteShadows");
         private static readonly int id_FrameIndex = Shader.PropertyToID("_FrameIndex");
@@ -97,7 +100,8 @@ namespace UnityEngine.Rendering.Universal
             m_CurrentSettings = featureSettings;
             m_RayTracingShader = shader;
             m_BlurMat = blurMaterial;
-            ConfigureInput(ScriptableRenderPassInput.Color);
+            ConfigureInput(ScriptableRenderPassInput.Color | ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal);
+            DepthNormalOnlyPass.ForceQuality(m_CurrentSettings.normalFormatQuality);
             renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
 
             return true;
@@ -270,6 +274,8 @@ namespace UnityEngine.Rendering.Universal
             internal RayTracingShader rayTracingShader;
             internal RayTracingAccelerationStructure accelerationStructure;
 
+            internal TextureHandle depthTexture;
+            internal TextureHandle normalTexture;
             internal TextureHandle reflectionTarget;
             internal TextureHandle shadowTarget;
 
@@ -336,6 +342,7 @@ namespace UnityEngine.Rendering.Universal
 
         private struct ShaderParams
         {
+            internal float nearClipPlane;
             internal float farClipPlane;
             internal float fieldOfView;
             internal float renderScale;
@@ -354,6 +361,7 @@ namespace UnityEngine.Rendering.Universal
 
             internal ShaderParams(bool startDirty)
             {
+                nearClipPlane = 0;
                 farClipPlane = 0;
                 fieldOfView = 0;
                 scaledPixelHeight = 0;
@@ -371,6 +379,7 @@ namespace UnityEngine.Rendering.Universal
             internal ShaderParams(ref RaytracingSettings settings, ref UniversalCameraData cameraData)
             {
                 var camera = cameraData.camera;
+                nearClipPlane = camera.nearClipPlane;
                 farClipPlane = camera.farClipPlane;
                 fieldOfView = camera.fieldOfView;
                 scaledPixelHeight = camera.scaledPixelHeight;
@@ -389,7 +398,8 @@ namespace UnityEngine.Rendering.Universal
 
             internal bool Equals(ref ShaderParams other)
             {
-                return Mathf.Approximately(farClipPlane, other.farClipPlane)
+                return Mathf.Approximately(nearClipPlane, other.nearClipPlane)
+                       && Mathf.Approximately(farClipPlane, other.farClipPlane)
                        && Mathf.Approximately(fieldOfView, other.fieldOfView)
                        && Mathf.Approximately(renderScale, other.renderScale)
                        && scaledPixelHeight == other.scaledPixelHeight
@@ -595,7 +605,35 @@ namespace UnityEngine.Rendering.Universal
             var camera = cameraData.camera;
             float pixelSpreadAngle = Mathf.Atan((2 * Mathf.Tan((Mathf.Deg2Rad * camera.fieldOfView) * .5f))
                                                 / (shaderParams.scaledPixelHeight * Mathf.Lerp(shaderParams.renderScale, 1.0f, .5f)));
-            cmd.SetRayTracingFloatParam(m_RayTracingShader, id_PixelSpreadAngle, pixelSpreadAngle);
+
+            float near = camera.nearClipPlane;
+            float far = camera.farClipPlane;
+            float invNear = Mathf.Approximately(near, 0.0f) ? 0.0f : 1.0f / near;
+            float invFar = Mathf.Approximately(far, 0.0f) ? 0.0f : 1.0f / far;
+
+            // From http://www.humus.name/temp/Linearize%20depth.txt
+            // But as depth component textures on OpenGL always return in 0..1 range (as in D3D), we have to use
+            // the same constants for both D3D and OpenGL here.
+            // OpenGL would be this:
+            // zc0 = (1.0 - far / near) / 2.0;
+            // zc1 = (1.0 + far / near) / 2.0;
+            // D3D is this:
+            float zc0 = 1.0f - far * invNear;
+            float zc1 = far * invNear;
+
+            Vector4 zBufferParams = new Vector4(zc0, zc1, zc0 * invFar, zc1 * invFar);
+
+            if (SystemInfo.usesReversedZBuffer)
+            {
+                zBufferParams.y += zBufferParams.x;
+                zBufferParams.x = -zBufferParams.x;
+                zBufferParams.w += zBufferParams.z;
+                zBufferParams.z = -zBufferParams.z;
+            }
+            cmd.SetRayTracingVectorParam(m_RayTracingShader, id_ZBufferParams, zBufferParams);
+
+            Vector4 cameraParams = new Vector4(near, far, zc1, pixelSpreadAngle);
+            cmd.SetRayTracingVectorParam(m_RayTracingShader, id_CameraParams, cameraParams);
 
             cmd.SetRayTracingIntParam(m_RayTracingShader, id_WriteReflections,
                 m_CurrentSettings.raytraceReflections ? 1 : 0);
@@ -677,7 +715,6 @@ namespace UnityEngine.Rendering.Universal
         {
             var camera = cameraData.camera;
 
-            cmd.SetRayTracingFloatParam(m_RayTracingShader, id_NearClip, camera.nearClipPlane);
             cmd.SetRayTracingMatrixParam(m_RayTracingShader, id_CameraToWorld, camera.cameraToWorldMatrix);
             cmd.SetRayTracingMatrixParam(m_RayTracingShader, id_CameraInverseProjection, camera.projectionMatrix.inverse);
         }
@@ -909,6 +946,7 @@ namespace UnityEngine.Rendering.Universal
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
+            UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
             if (m_PrevTargetFrameRate != m_CurrentSettings.targetFrameRate)
             {
@@ -926,6 +964,9 @@ namespace UnityEngine.Rendering.Universal
 
             var reflectionTarget = renderGraph.ImportTexture(m_ReflectionTargetHandle);
 
+            TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
+            TextureHandle cameraNormalsTexture = resourceData.cameraNormalsTexture;
+
             UpdateAccelerationStructure();
 
             using (var builder = renderGraph.AddComputePass<ReflectionPassData>("Reflection", out var passData, ProfilingSampler.Get(URPProfileId.RayReflection)))
@@ -937,6 +978,11 @@ namespace UnityEngine.Rendering.Universal
                 passData.width = desc.width;
                 passData.height = desc.height;
                 passData.cameraData = cameraData;
+
+                passData.depthTexture = cameraDepthTexture;
+                builder.UseTexture(passData.depthTexture, AccessFlags.Read);
+                passData.normalTexture = cameraNormalsTexture;
+                builder.UseTexture(passData.normalTexture, AccessFlags.Read);
 
                 builder.UseTexture(passData.reflectionTarget, AccessFlags.Write);
                 builder.AllowGlobalStateModification(true);
@@ -951,7 +997,7 @@ namespace UnityEngine.Rendering.Universal
                     UpdateCulling(data.cameraData);
                     m_CullUpdate += Time.unscaledDeltaTime;
 
-                    if (m_CullUpdate >= Mathf.Max(0.033f, m_UpdateTarget))
+                    // if (m_CullUpdate >= m_UpdateTarget)
                     {
                         m_CullUpdate = 0;
 
@@ -976,6 +1022,12 @@ namespace UnityEngine.Rendering.Universal
                             cmd.SetGlobalInteger(id_AccumulateFrameIndex, m_FrameIndex & 1);
 
                         cmd.SetGlobalInteger(id_FrameIndex, m_FrameIndex);
+
+                        cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_SceneDepthTexture,
+                            data.depthTexture);
+
+                        cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_SceneNormalsTexture,
+                            data.normalTexture);
 
                         cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_ReflectionRenderTarget,
                             data.reflectionTarget);
@@ -1034,6 +1086,8 @@ namespace UnityEngine.Rendering.Universal
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenBilinear, false);
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenTrilinear, false);
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenBicubic, false);
+
+            DepthNormalOnlyPass.ForceQuality(DepthNormalOnlyPass.NormalFormatQuality.Default);
         }
     }
 }
