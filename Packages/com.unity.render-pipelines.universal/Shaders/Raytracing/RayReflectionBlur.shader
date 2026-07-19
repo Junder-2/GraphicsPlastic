@@ -13,16 +13,17 @@
         #define DUAL_MULTIPLIER 4.0
         #define GAUSSIAN_MULTIPLIER 1.0
 
-        half4 EncodeHDR(half3 color)
+        half4 EncodeHDR(half4 color)
         {
+            half alpha = color.w;
         #if UNITY_COLORSPACE_GAMMA
             color = sqrt(color); // linear to γ
         #endif
 
-            return half4(color, 1.0);
+            return half4(color.xyz, alpha);
         }
 
-        half3 DecodeHDR(half4 data)
+        half4 DecodeHDR(half4 data)
         {
             half3 color = data.xyz;
 
@@ -30,10 +31,10 @@
             color *= color; // γ to linear
         #endif
 
-            return color;
+            return half4(color, data.w);
         }
 
-        half3 SampleHDR(float2 uv,  float2 offset)
+        half4 SampleHDR(float2 uv,  float2 offset)
         {
             float2 texelSize = _BlitTexture_TexelSize.xy;
             return DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - offset * texelSize, texelSize)));
@@ -45,18 +46,25 @@
             float2 texelSize = _BlitTexture_TexelSize.xy * 2.0;
             float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord);
 
-            // 9-tap gaussian blur on the downsampled source
-            half3 c0 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 4.0, 0.0), texelSize)));
-            half3 c1 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 3.0, 0.0), texelSize)));
-            half3 c2 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 2.0, 0.0), texelSize)));
-            half3 c3 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 1.0, 0.0), texelSize)));
-            half3 c4 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv                                 , texelSize)));
-            half3 c5 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 1.0, 0.0), texelSize)));
-            half3 c6 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 2.0, 0.0), texelSize)));
-            half3 c7 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 3.0, 0.0), texelSize)));
-            half3 c8 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 4.0, 0.0), texelSize)));
+            half4 center = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv, texelSize));
 
-            half3 color = c0 * 0.01621622 + c1 * 0.05405405 + c2 * 0.12162162 + c3 * 0.19459459
+            if (center.w < 1.h)
+            {
+                return center;
+            }
+
+            // 9-tap gaussian blur on the downsampled source
+            half4 c0 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 4.0, 0.0), texelSize)));
+            half4 c1 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 3.0, 0.0), texelSize)));
+            half4 c2 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 2.0, 0.0), texelSize)));
+            half4 c3 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv - float2(GAUSSIAN_MULTIPLIER * texelSize.x * 1.0, 0.0), texelSize)));
+            half4 c4 = DecodeHDR(center);
+            half4 c5 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 1.0, 0.0), texelSize)));
+            half4 c6 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 2.0, 0.0), texelSize)));
+            half4 c7 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 3.0, 0.0), texelSize)));
+            half4 c8 = DecodeHDR(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(uv + float2(GAUSSIAN_MULTIPLIER * texelSize.x * 4.0, 0.0), texelSize)));
+
+            half4 color = c0 * 0.01621622 + c1 * 0.05405405 + c2 * 0.12162162 + c3 * 0.19459459
                         + c4 * 0.22702703
                         + c5 * 0.19459459 + c6 * 0.12162162 + c7 * 0.05405405 + c8 * 0.01621622;
 
@@ -69,14 +77,20 @@
             float2 texelSize = _BlitTexture_TexelSize.xy;
             float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord);
 
-            // Optimized bilinear 5-tap gaussian on the same-sized source (9-tap equivalent)
-            half3 c0 = SampleHDR(uv, -float2(0.0, 3.23076923) * GAUSSIAN_MULTIPLIER);
-            half3 c1 = SampleHDR(uv, -float2(0.0, 1.38461538) * GAUSSIAN_MULTIPLIER);
-            half3 c2 = SampleHDR(uv,  float2(0.0, 0.0) * GAUSSIAN_MULTIPLIER);
-            half3 c3 = SampleHDR(uv, +float2(0.0, 1.38461538) * GAUSSIAN_MULTIPLIER);
-            half3 c4 = SampleHDR(uv, +float2(0.0, 3.23076923) * GAUSSIAN_MULTIPLIER);
+            half4 center = SampleHDR(uv,  float2(0.0, 0.0) * GAUSSIAN_MULTIPLIER);
+            if (center.w < 1.h)
+            {
+                return center;
+            }
 
-            half3 color = c0 * 0.07027027 + c1 * 0.31621622
+            // Optimized bilinear 5-tap gaussian on the same-sized source (9-tap equivalent)
+            half4 c0 = SampleHDR(uv, -float2(0.0, 3.23076923) * GAUSSIAN_MULTIPLIER);
+            half4 c1 = SampleHDR(uv, -float2(0.0, 1.38461538) * GAUSSIAN_MULTIPLIER);
+            half4 c2 = center;
+            half4 c3 = SampleHDR(uv, +float2(0.0, 1.38461538) * GAUSSIAN_MULTIPLIER);
+            half4 c4 = SampleHDR(uv, +float2(0.0, 3.23076923) * GAUSSIAN_MULTIPLIER);
+
+            half4 color = c0 * 0.07027027 + c1 * 0.31621622
                         + c2 * 0.22702703
                         + c3 * 0.31621622 + c4 * 0.07027027;
 
@@ -88,14 +102,18 @@
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord);
 
-            half3 c0 = SampleHDR(uv, float2(0, 0));
+            half4 c0 = SampleHDR(uv, float2(0, 0));
+            if (c0.w < 1.h)
+            {
+                return c0;
+            }
 
-            half3 c1 = SampleHDR(uv, float2( DUAL_MULTIPLIER,  DUAL_MULTIPLIER));
-            half3 c2 = SampleHDR(uv, float2(-DUAL_MULTIPLIER,  DUAL_MULTIPLIER));
-            half3 c3 = SampleHDR(uv, float2(-DUAL_MULTIPLIER, -DUAL_MULTIPLIER));
-            half3 c4 = SampleHDR(uv, float2( DUAL_MULTIPLIER, -DUAL_MULTIPLIER));
+            half4 c1 = SampleHDR(uv, float2( DUAL_MULTIPLIER,  DUAL_MULTIPLIER));
+            half4 c2 = SampleHDR(uv, float2(-DUAL_MULTIPLIER,  DUAL_MULTIPLIER));
+            half4 c3 = SampleHDR(uv, float2(-DUAL_MULTIPLIER, -DUAL_MULTIPLIER));
+            half4 c4 = SampleHDR(uv, float2( DUAL_MULTIPLIER, -DUAL_MULTIPLIER));
 
-            half3 color = (1.0 / 8.0) * (c0 * 4.0 + c1 + c2 + c3 + c4);
+            half4 color = (1.0 / 8.0) * (c0 * 4.0 + c1 + c2 + c3 + c4);
 
             return EncodeHDR(color);
         }
