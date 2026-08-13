@@ -463,7 +463,7 @@ half3 GlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half p
     half3 irradiance;
 
 #if !defined(_ENVIRONMENTREFLECTIONS_OFF)
-    #if defined(_REFLECTION_SCREEN)
+    #if defined(_REFLECTION_SCREEN) && !defined(_SURFACE_TYPE_TRANSPARENT)
     half4 reflectColor = SampleReflectionScreen(normalizedScreenSpaceUV.xy, perceptualRoughness);
     screenReflect = saturate(reflectColor.rgb);
     screenReflectMask = reflectColor.a;

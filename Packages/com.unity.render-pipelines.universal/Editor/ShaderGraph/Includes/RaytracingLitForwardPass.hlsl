@@ -3,33 +3,32 @@
 [shader("anyhit")]
 void anyHit(inout RayPayload rayPayload, in AttributeData attributeData)
 {
-    #ifdef _ALPHATEST_ON
-        float coneWidth = rayPayload.rayConeWidth;
-        rayPayload.rayConeWidth += rayPayload.rayConeSpreadAngle*RayTCurrent();
+    float coneWidth = rayPayload.rayConeWidth;
+    rayPayload.rayConeWidth += rayPayload.rayConeSpreadAngle*RayTCurrent();
 
-        bool isFrontFace;
-        Varyings input = BuildVaryings(rayPayload, attributeData, isFrontFace);
-        SurfaceDescription surfaceDescription = BuildSurfaceDescription(input);
-        rayPayload.rayConeWidth = coneWidth;
+    bool isFrontFace;
+    Varyings input = BuildVaryings(rayPayload, attributeData, isFrontFace);
+    SurfaceDescription surfaceDescription = BuildSurfaceDescription(input);
+    rayPayload.rayConeWidth = coneWidth;
 
-    #ifdef _RENDER_FACE_BACK
-        if (isFrontFace)
-        {
-            IgnoreHit();
-            return;
-        }
-    #elif !defined(_RENDER_FACE_DOUBLE)
-        if (!isFrontFace)
-        {
-            IgnoreHit();
-            return;
-        }
-    #endif
+#ifdef _RENDER_FACE_BACK
+    if (isFrontFace)
+    {
+        IgnoreHit();
+        return;
+    }
+#elif !defined(_RENDER_FACE_DOUBLE)
+    if (!isFrontFace)
+    {
+        IgnoreHit();
+        return;
+    }
+#endif
 
-        if(surfaceDescription.Alpha <= surfaceDescription.AlphaClipThreshold)
-            IgnoreHit();
-
-    #endif
+#ifdef _ALPHATEST_ON
+    if(surfaceDescription.Alpha <= surfaceDescription.AlphaClipThreshold)
+        IgnoreHit();
+#endif
 }
 
 [shader("closesthit")]
@@ -48,7 +47,7 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
 
     SurfaceDescription surfaceDescription = BuildSurfaceDescription(input);
 
-    if(rayPayload.depth == 0 && !RayShouldReflect(surfaceDescription.Smoothness, rayPayload))
+    if(!RayShouldReflect(surfaceDescription.Smoothness, rayPayload))
     {
         return;
     }
@@ -253,6 +252,6 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
     rayPayload.color = RayUniversalFragmentPBR(inputData, surface, rayPayload).rgb;
 
     // stop if we have reached max recursion depth
-    if(rayPayload.depth + 1 >= gMaxDepth)
+    if(rayPayload.depth >= gMaxDepth)
         return;
 }

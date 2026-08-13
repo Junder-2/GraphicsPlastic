@@ -2607,16 +2607,6 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             stages = KeywordShaderStage.RayTracing,
         };
 
-        public static readonly KeywordDescriptor RayDebugDisplay = new KeywordDescriptor()
-        {
-            displayName = "Debug Display",
-            referenceName = "DEBUG_DISPLAY",
-            type = KeywordType.Boolean,
-            definition = KeywordDefinition.MultiCompile,
-            scope = KeywordScope.Global,
-            stages = KeywordShaderStage.RayTracing,
-        };
-
         public static readonly KeywordDescriptor RayLightLayers = new KeywordDescriptor()
         {
             displayName = "Light Layers",

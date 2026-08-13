@@ -3,37 +3,37 @@
 [shader("anyhit")]
 void anyHit (inout RayPayload rayPayload , in AttributeData attributeData)
 {
-    #ifdef _ALPHATEST_ON
-        IntersectionVertex currentvertex;
-        float3 rayDir = WorldRayDirection();
-        GetCurrentIntersectionVertex(attributeData, currentvertex, rayDir);
+    IntersectionVertex currentvertex;
+    float3 rayDir = WorldRayDirection();
+    GetCurrentIntersectionVertex(attributeData, currentvertex, rayDir);
 
-        float3x3 objectToWorld = (float3x3)ObjectToWorld3x4();
-        float3 worldNormal = normalize(mul(objectToWorld, currentvertex.normalOS));
+    float3x3 objectToWorld = (float3x3)ObjectToWorld3x4();
+    float3 worldNormal = normalize(mul(objectToWorld, currentvertex.normalOS));
 
-    #ifdef _RENDER_FACE_BACK
-        if (currentvertex.frontFace)
-        {
-            IgnoreHit();
-            return;
-        }
-    #elif !defined(_RENDER_FACE_DOUBLE)
-        if (!currentvertex.frontFace)
-        {
-            IgnoreHit();
-            return;
-        }
-    #endif
+#ifdef _RENDER_FACE_BACK
+    if (currentvertex.frontFace)
+    {
+        IgnoreHit();
+        return;
+    }
+#elif !defined(_RENDER_FACE_DOUBLE)
+    if (!currentvertex.frontFace)
+    {
+        IgnoreHit();
+        return;
+    }
+#endif
 
-        float LOD = RayCalcLOD(currentvertex.triangleArea, currentvertex.texCoord0Area, rayPayload.rayConeWidth, WorldRayDirection(), worldNormal);
+#ifdef _ALPHATEST_ON
+    float LOD = RayCalcLOD(currentvertex.triangleArea, currentvertex.texCoord0Area, rayPayload.rayConeWidth, WorldRayDirection(), worldNormal);
 
-        half2 uv = TRANSFORM_TEX(currentvertex.texCoord0, _BaseMap);
+    half2 uv = TRANSFORM_TEX(currentvertex.texCoord0, _BaseMap);
 
-        half alpha = _BaseColor.a*RaySampleTex2D(_BaseMap, sampler_BaseMap, uv, LOD).a;
+    half alpha = _BaseColor.a*RaySampleTex2D(_BaseMap, sampler_BaseMap, uv, LOD).a;
 
-        if(alpha <= _Cutoff)
-            IgnoreHit();
-    #endif
+    if(alpha <= _Cutoff)
+        IgnoreHit();
+#endif
 }
 
 [shader("closesthit")]
@@ -59,7 +59,7 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
     SurfaceData surfaceData;
     InitializePlasticLitSurfaceData(uv, LOD, surfaceData);
 
-    if(rayPayload.depth == 0 && !RayShouldReflect(surfaceData.smoothness, rayPayload))
+    if(!RayShouldReflect(surfaceData.smoothness, rayPayload))
     {
         return;
     }
@@ -151,6 +151,6 @@ void ClosestHit(inout RayPayload rayPayload : SV_RayPayload, AttributeData attri
     rayPayload.color = RayUniversalFragmentPBR(inputData, surfaceData, rayPayload).rgb;
 
     // stop if we have reached max recursion depth
-    if(rayPayload.depth + 1 >= gMaxDepth)
+    if(rayPayload.depth >= gMaxDepth)
         return;
 }

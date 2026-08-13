@@ -37,6 +37,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         [SerializeField]
         bool m_SpecularFactor = false;
 
+        [SerializeField]
+        bool m_DisableRayPass = false;
+
         public UniversalLitSubTarget()
         {
             displayName = "Lit";
@@ -72,6 +75,12 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
         {
             get => m_SpecularFactor;
             set => m_SpecularFactor = value;
+        }
+
+        public bool disableRayPass
+        {
+            get => m_DisableRayPass;
+            set => m_DisableRayPass = value;
         }
 
         private bool complexLit
@@ -303,6 +312,16 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 specularFactor = evt.newValue;
                 onChange();
             });
+
+            context.AddProperty("Disable Raytracing Pass", new Toggle() { value = disableRayPass }, (evt) =>
+            {
+                if (Equals(disableRayPass, evt.newValue))
+                    return;
+
+                registerUndo("Change Disable Raytracing Pass");
+                disableRayPass = evt.newValue;
+                onChange();
+            });
         }
 
         protected override int ComputeMaterialNeedsUpdateHash()
@@ -427,7 +446,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
 
                 result.passes.Add(PassVariant(LitPasses.Meta(target), CorePragmas.Default));
 
-                result.passes.Add(PassVariant(LitPasses.RaytracingLit(target, workflowMode, blendModePreserveSpecular), CorePragmas.Raytracing));
+                bool disableRayPass = target.activeSubTarget is UniversalLitSubTarget { disableRayPass: true };
+                if (!disableRayPass)
+                    result.passes.Add(PassVariant(LitPasses.RaytracingLit(target, workflowMode, blendModePreserveSpecular), CorePragmas.Raytracing));
 
                 // Currently neither of these passes (selection/picking) can be last for the game view for
                 // UI shaders to render correctly. Verify [1352225] before changing this order.
@@ -1084,7 +1105,6 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 { CoreKeywordDescriptors.LightmapShadowMixing },
                 { CoreKeywordDescriptors.ShadowsShadowmask },
                 { CoreKeywordDescriptors.RayLightLayers },
-                { CoreKeywordDescriptors.RayDebugDisplay },
                 { CoreKeywordDescriptors.RayLightCookies },
                 { CoreKeywordDescriptors.ClusterLightLoop },
                 { CoreKeywordDescriptors.EvaluateSh },

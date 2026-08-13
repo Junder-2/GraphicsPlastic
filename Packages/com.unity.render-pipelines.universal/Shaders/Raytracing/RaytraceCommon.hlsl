@@ -15,7 +15,7 @@ RaytracingAccelerationStructure  _RaytracingAccelerationStructure;
 #define EPSILON         1.0e-4
 
 // max recursion depth
-static const uint gMaxDepth = 3;
+static const uint gMaxDepth = 6;
 
 static const float gShadowOffset = .05f;
 
