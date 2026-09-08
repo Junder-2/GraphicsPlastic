@@ -161,6 +161,7 @@ Shader "Universal Render Pipeline/Lit"
             #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
             #pragma multi_compile_fragment _ _LIGHT_COOKIES
             #pragma multi_compile_fragment _ _REFLECTION_SCREEN
+            #pragma multi_compile_fragment _ _TRANSPARENT_REFLECTION_SCREEN
             #pragma multi_compile_fragment _ _REFLECTION_SCREEN_BILINEAR _REFLECTION_SCREEN_TRILINEAR _REFLECTION_SCREEN_BICUBIC
             #pragma multi_compile_fragment _ _REFLECTION_SCREEN_MIPS
             #pragma multi_compile _ _LIGHT_LAYERS

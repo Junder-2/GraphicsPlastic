@@ -20,6 +20,7 @@ namespace UnityEngine.Rendering.Universal
         private bool m_Rendered;
 
         private RTHandle m_ReflectionTargetHandle;
+        private RTHandle m_TransparentReflectionTargetHandle;
         // private RTHandle shadowTarget;
         private RayTracingShader m_RayTracingShader;
         private RaytracingSettings m_CurrentSettings;
@@ -39,6 +40,7 @@ namespace UnityEngine.Rendering.Universal
         private static readonly int id_AccelerationStructure = Shader.PropertyToID("_RaytracingAccelerationStructure");
 
         private static readonly int id_MaxReflectDepth = Shader.PropertyToID("gMaxReflectDepth");
+        private static readonly int id_TransparentMaxDepth = Shader.PropertyToID("gMaxTransparentDepth");
         private static readonly int id_ClipDistance = Shader.PropertyToID("gClipDistance");
         private static readonly int id_LODBias = Shader.PropertyToID("gLODBias");
 
@@ -47,18 +49,20 @@ namespace UnityEngine.Rendering.Universal
         private static readonly int id_CameraToWorld = Shader.PropertyToID("_CameraToWorld");
         private static readonly int id_CameraInverseProjection = Shader.PropertyToID("_CameraInverseProjection");
         private static readonly int id_ReflectionRenderTarget = Shader.PropertyToID("_ReflectionRenderTarget");
+        private static readonly int id_TransparentReflectionRenderTarget = Shader.PropertyToID("_TransparentReflectionRenderTarget");
         private static readonly int id_ShadowRenderTarget = Shader.PropertyToID("_ShadowRenderTarget");
         private static readonly int id_SceneDepthTexture = Shader.PropertyToID("_CameraDepthTexture");
         private static readonly int id_SceneNormalsTexture = Shader.PropertyToID("_CameraNormalsTexture");
         private static readonly int id_WriteReflections = Shader.PropertyToID("_WriteReflections");
         private static readonly int id_WriteShadows = Shader.PropertyToID("_WriteShadows");
         private static readonly int id_FrameIndex = Shader.PropertyToID("_FrameIndex");
+        private static readonly int id_RenderMode = Shader.PropertyToID("_RenderMode");
+        private static readonly int id_RenderNoiseFraction = Shader.PropertyToID("_RenderNoiseFraction");
+        private static readonly int id_BlendOffsetId = Shader.PropertyToID("_AccumulateReflectionOffset");
 
         private static readonly int id_ScreenSpaceReflectionTexture = Shader.PropertyToID("_ScreenSpaceReflectionTexture");
+        private static readonly int id_TransparentScreenSpaceReflectionTexture = Shader.PropertyToID("_TransparentScreenSpaceReflectionTexture");
 
-        private static readonly int id_AccumulateReflection = Shader.PropertyToID("_AccumulateReflection");
-        private static readonly int id_BlendOffsetId = Shader.PropertyToID("_AccumulateReflectionOffset");
-        private static readonly int id_AccumulateFrameIndex = Shader.PropertyToID("_AccumulateReflectionFrameIndex");
 
         private const int MaxMipBlurCount = 8;
 
@@ -277,6 +281,7 @@ namespace UnityEngine.Rendering.Universal
             internal TextureHandle depthTexture;
             internal TextureHandle normalTexture;
             internal TextureHandle reflectionTarget;
+            internal TextureHandle transparentReflectionTarget;
             internal TextureHandle shadowTarget;
 
             internal bool raytraceReflections;
@@ -284,6 +289,9 @@ namespace UnityEngine.Rendering.Universal
 
             internal int width;
             internal int height;
+
+            internal int transparentWidth;
+            internal int transparentHeight;
 
             internal UniversalCameraData cameraData;
         }
@@ -311,6 +319,7 @@ namespace UnityEngine.Rendering.Universal
             internal int width;
             internal int height;
             internal SamplingMode samplingMode;
+            internal float transparentRenderScale;
 
             internal bool isDirty;
 
@@ -319,6 +328,7 @@ namespace UnityEngine.Rendering.Universal
                 width = 0;
                 height = 0;
                 samplingMode = SamplingMode.Point;
+                transparentRenderScale = 0;
                 isDirty = startDirty;
             }
 
@@ -327,6 +337,9 @@ namespace UnityEngine.Rendering.Universal
                 width = desc.width;
                 height = desc.height;
                 samplingMode = settings.samplingMode;
+                transparentRenderScale = settings.reflectionTransparent
+                    ? Mathf.Min(settings.transparentRenderScale, settings.renderScale) / settings.renderScale
+                    : -1;
                 isDirty = true;
             }
 
@@ -335,6 +348,7 @@ namespace UnityEngine.Rendering.Universal
                 return width == other.width
                        && height == other.height
                        && samplingMode == other.samplingMode
+                       && Mathf.Approximately(transparentRenderScale, other.transparentRenderScale)
                     ;
             }
         }
@@ -350,9 +364,11 @@ namespace UnityEngine.Rendering.Universal
 
             internal float lodBias;
             internal byte maxReflectionDepth;
+            internal byte maxTransparentDepth;
             internal bool raytraceReflections;
             internal bool raytraceShadows;
             internal bool renderReflectionsMainShadows;
+            internal bool traceTransparent;
 
             internal SamplingMode samplingMode;
             internal bool genMipMaps;
@@ -368,9 +384,11 @@ namespace UnityEngine.Rendering.Universal
                 renderScale = 1;
                 lodBias = 0;
                 maxReflectionDepth = 0;
+                maxTransparentDepth = 0;
                 raytraceReflections = false;
                 raytraceShadows = false;
                 renderReflectionsMainShadows = false;
+                traceTransparent = false;
                 samplingMode = SamplingMode.Point;
                 genMipMaps = false;
                 isDirty = startDirty;
@@ -387,9 +405,11 @@ namespace UnityEngine.Rendering.Universal
 
                 lodBias = settings.lodBias;
                 maxReflectionDepth = settings.maxReflectionDepth;
+                maxTransparentDepth = settings.maxTransparentDepth;
                 raytraceReflections = settings.raytraceReflections;
                 raytraceShadows = settings.raytraceShadows;
                 renderReflectionsMainShadows = settings.renderReflectionsMainShadows;
+                traceTransparent = settings.reflectionTransparent;
                 samplingMode = settings.samplingMode;
                 genMipMaps = settings.generateReflectionMips;
 
@@ -405,9 +425,11 @@ namespace UnityEngine.Rendering.Universal
                        && scaledPixelHeight == other.scaledPixelHeight
                        && Mathf.Approximately(lodBias, other.lodBias)
                        && maxReflectionDepth == other.maxReflectionDepth
+                       && maxTransparentDepth == other.maxTransparentDepth
                        && raytraceReflections == other.raytraceReflections
                        && raytraceShadows == other.raytraceShadows
                        && renderReflectionsMainShadows == other.renderReflectionsMainShadows
+                       && traceTransparent == other.traceTransparent
                        && samplingMode == other.samplingMode
                     ;
             }
@@ -419,6 +441,7 @@ namespace UnityEngine.Rendering.Universal
         {
             internal RenderMode renderMode;
             internal Vector4 blendSampleOffset;
+            internal float renderNoiseFraction;
 
             internal bool isDirty;
 
@@ -426,12 +449,14 @@ namespace UnityEngine.Rendering.Universal
             {
                 renderMode = RenderMode.FullRes;
                 blendSampleOffset = default;
+                renderNoiseFraction = 0;
                 isDirty = startDirty;
             }
 
             internal AccumulateMaterialParams(ref RaytracingSettings settings)
             {
                 renderMode = settings.renderMode;
+                renderNoiseFraction = settings.renderNoiseFraction;
 
                 Vector2 offset = Vector2.zero;
                 switch (renderMode)
@@ -444,6 +469,8 @@ namespace UnityEngine.Rendering.Universal
                         offset.x = 1;
                         offset.y = 1;
                         break;
+                    default:
+                    case RenderMode.InterleavedGradientNoise:
                     case RenderMode.FullRes:
                         offset.x = 0;
                         offset.y = 0;
@@ -463,6 +490,7 @@ namespace UnityEngine.Rendering.Universal
             internal bool Equals(ref AccumulateMaterialParams other)
             {
                 return renderMode == other.renderMode
+                       && Mathf.Approximately(renderNoiseFraction, other.renderNoiseFraction)
                     ;
             }
         }
@@ -520,7 +548,7 @@ namespace UnityEngine.Rendering.Universal
                 allowTransparentMaterials = true,
                 allowAlphaTestedMaterials = true,
                 layerMask = m_CurrentSettings.updateLayers,
-                instanceMask = 1,
+                instanceMask = (1 << 0),
                 shadowCastingModeMask = (1 << (int)ShadowCastingMode.Off) | (1 << (int)ShadowCastingMode.On) |
                                         (1 << (int)ShadowCastingMode.TwoSided),
             };
@@ -530,12 +558,22 @@ namespace UnityEngine.Rendering.Universal
                 allowTransparentMaterials = true,
                 allowAlphaTestedMaterials = true,
                 layerMask = m_CurrentSettings.updateLayers,
-                instanceMask = 2,
+                instanceMask = (1 << 1),
+                shadowCastingModeMask = (1 << (int)ShadowCastingMode.On) | (1 << (int)ShadowCastingMode.TwoSided) |
+                                        (1 << (int)ShadowCastingMode.ShadowsOnly)
+            };
+            var transparentTest = new RayTracingInstanceCullingTest
+            {
+                allowOpaqueMaterials = false,
+                allowTransparentMaterials = true,
+                allowAlphaTestedMaterials = false,
+                layerMask = m_CurrentSettings.updateLayers,
+                instanceMask = (1 << 2),
                 shadowCastingModeMask = (1 << (int)ShadowCastingMode.On) | (1 << (int)ShadowCastingMode.TwoSided) |
                                         (1 << (int)ShadowCastingMode.ShadowsOnly)
             };
 
-            m_RaytracingCullingConfig.instanceTests = new[] { defaultTest, shadowTest };
+            m_RaytracingCullingConfig.instanceTests = new[] { defaultTest, shadowTest, transparentTest };
 
             m_CullUpdate = 100;
 
@@ -548,7 +586,7 @@ namespace UnityEngine.Rendering.Universal
         {
             var desc = cameraData.cameraTargetDescriptor;
 
-            desc.colorFormat = RenderTextureFormat.Default;
+            desc.colorFormat = RenderTextureFormat.DefaultHDR;
             desc.sRGB = false;
             desc.depthBufferBits = 0;
             desc.msaaSamples = 1;
@@ -571,6 +609,9 @@ namespace UnityEngine.Rendering.Universal
             m_ReflectionTargetHandle?.Release();
             m_ReflectionTargetHandle = null;
 
+            m_TransparentReflectionTargetHandle?.Release();
+            m_TransparentReflectionTargetHandle = null;
+
             FilterMode filterMode;
             switch (matParams.samplingMode)
             {
@@ -588,6 +629,14 @@ namespace UnityEngine.Rendering.Universal
             }
 
             RenderingUtils.ReAllocateHandleIfNeeded(ref m_ReflectionTargetHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_RTReflectionTarget");
+
+            if (matParams.transparentRenderScale > 0)
+            {
+                desc.width = Mathf.Max((int)(matParams.transparentRenderScale * desc.width), 1);
+                desc.height = Mathf.Max((int)(matParams.transparentRenderScale * desc.height), 1);
+                desc.useMipMap = false;
+                RenderingUtils.ReAllocateHandleIfNeeded(ref m_TransparentReflectionTargetHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_RTTransparentReflectionTarget");
+            }
         }
 
         private void UpdateParams(ComputeCommandBuffer cmd, ref RaytracingSettings settings, ref UniversalCameraData cameraData)
@@ -641,6 +690,7 @@ namespace UnityEngine.Rendering.Universal
 
             cmd.SetGlobalInteger(id_ClipDistance, (int)camera.farClipPlane);
             cmd.SetGlobalInteger(id_MaxReflectDepth, shaderParams.maxReflectionDepth);
+            cmd.SetGlobalInteger(id_TransparentMaxDepth, shaderParams.maxTransparentDepth);
             cmd.SetGlobalFloat(id_LODBias, shaderParams.lodBias);
 
             CoreUtils.SetKeyword(cmd, "_REFLECTIONS_SHADOWS", shaderParams.renderReflectionsMainShadows);
@@ -652,6 +702,15 @@ namespace UnityEngine.Rendering.Universal
             else
             {
                 cmd.SetKeyword(ShaderGlobalKeywords.ReflectionScreen, false);
+            }
+
+            if (shaderParams.traceTransparent)
+            {
+                cmd.SetKeyword(ShaderGlobalKeywords.TransparentReflectionScreen, true);
+            }
+            else
+            {
+                cmd.SetKeyword(ShaderGlobalKeywords.TransparentReflectionScreen, false);
             }
 
             if (shaderParams.genMipMaps)
@@ -706,9 +765,15 @@ namespace UnityEngine.Rendering.Universal
 
             m_AccumulateMaterialParamsPrev = matParams;
             m_AccumulateMaterialParamsPrev.isDirty = false;
-            cmd.SetGlobalVector(id_BlendOffsetId, matParams.blendSampleOffset);
-            cmd.SetGlobalInteger(id_AccumulateReflection, matParams.renderMode == RenderMode.FullRes ? 0 : 1);
-            cmd.SetGlobalInteger(id_AccumulateFrameIndex, 0);
+            cmd.SetRayTracingVectorParam(m_RayTracingShader, id_BlendOffsetId, matParams.blendSampleOffset);
+            int renderMode = matParams.renderMode switch
+            {
+                RenderMode.HalfCheckerboard or RenderMode.HalfLines => 1,
+                RenderMode.InterleavedGradientNoise => 2,
+                _ => 0
+            };
+            cmd.SetRayTracingIntParam(m_RayTracingShader, id_RenderMode, renderMode);
+            cmd.SetRayTracingFloatParam(m_RayTracingShader, id_RenderNoiseFraction, matParams.renderNoiseFraction);
         }
 
         private void UpdateCameraData(ComputeCommandBuffer cmd, ref UniversalCameraData cameraData)
@@ -719,11 +784,11 @@ namespace UnityEngine.Rendering.Universal
             cmd.SetRayTracingMatrixParam(m_RayTracingShader, id_CameraInverseProjection, camera.projectionMatrix.inverse);
         }
 
-        private void UpdateCulling(UniversalCameraData cameraData)
+        private void UpdateCulling(UniversalCameraData cameraData, ref RaytracingSettings settings)
         {
             var camera = cameraData.camera;
 
-            m_RaytracingCullingConfig.sphereRadius = camera.farClipPlane * .5f;
+            m_RaytracingCullingConfig.sphereRadius = settings.cullDistance;
             m_RaytracingCullingConfig.sphereCenter = cameraData.worldSpaceCameraPos;
             m_RaytracingCullingConfig.lodParameters.fieldOfView = camera.fieldOfView;
             m_RaytracingCullingConfig.lodParameters.cameraPosition = cameraData.worldSpaceCameraPos;
@@ -960,9 +1025,16 @@ namespace UnityEngine.Rendering.Universal
                 m_CaptureUpdate = 100;
             }
 
+            m_CurrentSettings.Validate();
+
             UpdateTextures(renderGraph, cameraData);
 
             var reflectionTarget = renderGraph.ImportTexture(m_ReflectionTargetHandle);
+            var transparentReflectionTarget = renderGraph.defaultResources.clearTextureXR;
+            if (m_CurrentSettings.reflectionTransparent)
+            {
+                transparentReflectionTarget = renderGraph.ImportTexture(m_TransparentReflectionTargetHandle);
+            }
 
             TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
             TextureHandle cameraNormalsTexture = resourceData.cameraNormalsTexture;
@@ -975,6 +1047,7 @@ namespace UnityEngine.Rendering.Universal
                 passData.rayTracingShader = m_RayTracingShader;
                 passData.accelerationStructure = m_AccelerationStructure;
                 passData.reflectionTarget = reflectionTarget;
+                passData.transparentReflectionTarget = transparentReflectionTarget;
                 passData.width = desc.width;
                 passData.height = desc.height;
                 passData.cameraData = cameraData;
@@ -990,11 +1063,20 @@ namespace UnityEngine.Rendering.Universal
                 if (!m_CurrentSettings.generateReflectionMips)
                     builder.SetGlobalTextureAfterPass(passData.reflectionTarget, id_ScreenSpaceReflectionTexture);
 
+                if (m_CurrentSettings.reflectionTransparent)
+                {
+                    var transDesc = transparentReflectionTarget.GetDescriptor(renderGraph);
+                    passData.transparentWidth = transDesc.width;
+                    passData.transparentHeight = transDesc.height;
+                    builder.UseTexture(passData.transparentReflectionTarget, AccessFlags.Write);
+                    builder.SetGlobalTextureAfterPass(passData.transparentReflectionTarget, id_TransparentScreenSpaceReflectionTexture);
+                }
+
                 builder.SetRenderFunc((ReflectionPassData data, ComputeGraphContext context) =>
                 {
                     var cmd = context.cmd;
 
-                    UpdateCulling(data.cameraData);
+                    UpdateCulling(data.cameraData, ref m_CurrentSettings);
                     m_CullUpdate += Time.unscaledDeltaTime;
 
                     // if (m_CullUpdate >= m_UpdateTarget)
@@ -1018,10 +1100,7 @@ namespace UnityEngine.Rendering.Universal
 
                         UpdateAccumulateParams(cmd, ref m_CurrentSettings);
 
-                        if (m_CurrentSettings.renderMode != RenderMode.FullRes)
-                            cmd.SetGlobalInteger(id_AccumulateFrameIndex, m_FrameIndex & 1);
-
-                        cmd.SetGlobalInteger(id_FrameIndex, m_FrameIndex);
+                        cmd.SetRayTracingIntParam(passData.rayTracingShader, id_FrameIndex, m_FrameIndex);
 
                         cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_SceneDepthTexture,
                             data.depthTexture);
@@ -1032,11 +1111,16 @@ namespace UnityEngine.Rendering.Universal
                         cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_ReflectionRenderTarget,
                             data.reflectionTarget);
 
+                        if (m_CurrentSettings.reflectionTransparent)
+                            cmd.SetRayTracingTextureParam(passData.rayTracingShader, id_TransparentReflectionRenderTarget, data.transparentReflectionTarget);
+
                         cmd.SetRayTracingShaderPass(passData.rayTracingShader, "RaytracingLit");
                         cmd.SetRayTracingAccelerationStructure(passData.rayTracingShader, id_AccelerationStructure,
                             passData.accelerationStructure);
 
                         cmd.DispatchRays(passData.rayTracingShader, "Raytracer", (uint)data.width, (uint)data.height, 1u, cameraData.camera);
+                        if (m_CurrentSettings.reflectionTransparent)
+                            cmd.DispatchRays(passData.rayTracingShader, "TransparentRaytracer", (uint)passData.transparentWidth, (uint)passData.transparentHeight, 1u, cameraData.camera);
 
                         m_FrameIndex = (m_FrameIndex + 1) % 1024;
                         m_Rendered = true;
@@ -1083,6 +1167,7 @@ namespace UnityEngine.Rendering.Universal
             m_AccelerationStructure = null;
 
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreen, false);
+            Shader.SetKeyword(ShaderGlobalKeywords.TransparentReflectionScreen, false);
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenBilinear, false);
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenTrilinear, false);
             Shader.SetKeyword(ShaderGlobalKeywords.ReflectionScreenBicubic, false);

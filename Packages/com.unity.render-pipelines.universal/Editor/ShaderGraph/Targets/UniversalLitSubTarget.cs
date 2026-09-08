@@ -1059,6 +1059,7 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
                 { CoreKeywordDescriptors.ClusterLightLoop },
                 { CoreKeywordDescriptors.EvaluateSh },
                 { CoreKeywordDescriptors.ReflectionScreen },
+                { CoreKeywordDescriptors.TransparentReflectionScreen },
                 { CoreKeywordDescriptors.ReflectionScreenSampling },
                 { CoreKeywordDescriptors.ReflectionScreenMips },
             };

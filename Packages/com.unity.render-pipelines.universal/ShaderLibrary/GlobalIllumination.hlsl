@@ -16,8 +16,31 @@
 #endif
 
 #if defined(_REFLECTION_SCREEN)
+    #if !defined(_SURFACE_TYPE_TRANSPARENT)
+    #define USE_REFLECTION_SCREEN 1
+    #elif defined(_SURFACE_TYPE_TRANSPARENT) && defined(_TRANSPARENT_REFLECTION_SCREEN)
+    #define USE_REFLECTION_SCREEN 1
+    #else
+    #define USE_REFLECTION_SCREEN 0
+    #endif
+#else
+#define USE_REFLECTION_SCREEN 0
+#endif
+
+#if USE_REFLECTION_SCREEN
 TEXTURE2D_X(_ScreenSpaceReflectionTexture);
 float4 _ScreenSpaceReflectionTexture_TexelSize;
+
+TEXTURE2D_X(_TransparentScreenSpaceReflectionTexture);
+float4 _TransparentScreenSpaceReflectionTexture_TexelSize;
+
+#if !defined(_SURFACE_TYPE_TRANSPARENT)
+#define ScreenSpaceTex _ScreenSpaceReflectionTexture
+#define ScreenSpaceTexSize _ScreenSpaceReflectionTexture_TexelSize
+#else
+#define ScreenSpaceTex _TransparentScreenSpaceReflectionTexture
+#define ScreenSpaceTexSize _TransparentScreenSpaceReflectionTexture_TexelSize
+#endif
 
 half4 SampleReflectionScreen(float2 pos, half roughness)
 {
@@ -30,7 +53,7 @@ half4 SampleReflectionScreen(float2 pos, half roughness)
     mip = floor(mip);
     half divisor = pow(2, mip);
     half divisor2 = 1.0 / divisor;
-    float4 texSize = _ScreenSpaceReflectionTexture_TexelSize.zwxy * float4(divisor2, divisor2, divisor, divisor);
+    float4 texSize = ScreenSpaceTexSize.zwxy * float4(divisor2, divisor2, divisor, divisor);
     half2 maxCoord = (1.0).xx;
 
     float2 xy = pos * texSize.xy + 0.5;
@@ -40,16 +63,16 @@ half4 SampleReflectionScreen(float2 pos, half roughness)
     float2 weights[2], offsets[2];
     BicubicFilter(fc, weights, offsets);
 
-    return weights[0].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)  +
-                           weights[1].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)) +
-           weights[1].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip)  +
-                           weights[1].x * SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip));
+    return weights[0].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), mip)) +
+           weights[1].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_LinearClamp, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_LinearClamp, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), mip));
 #elif defined(_REFLECTION_SCREEN_TRILINEAR) && defined(_REFLECTION_SCREEN_MIPS)
-    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_TrilinearClamp, pos, mip);
+    return SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_TrilinearClamp, pos, mip);
 #elif defined(_REFLECTION_SCREEN_BILINEAR) || defined(_REFLECTION_SCREEN_TRILINEAR)
-    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_LinearClamp, pos, mip);
+    return SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_LinearClamp, pos, mip);
 #else
-    return SAMPLE_TEXTURE2D_LOD(_ScreenSpaceReflectionTexture, sampler_PointClamp, pos, mip);
+    return SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_PointClamp, pos, mip);
 #endif
 }
 #endif
@@ -463,9 +486,9 @@ half3 GlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half p
     half3 irradiance;
 
 #if !defined(_ENVIRONMENTREFLECTIONS_OFF)
-    #if defined(_REFLECTION_SCREEN) && !defined(_SURFACE_TYPE_TRANSPARENT)
+    #if USE_REFLECTION_SCREEN
     half4 reflectColor = SampleReflectionScreen(normalizedScreenSpaceUV.xy, perceptualRoughness);
-    screenReflect = saturate(reflectColor.rgb);
+    screenReflect = reflectColor.rgb;
     screenReflectMask = reflectColor.a;
     if (screenReflectMask >= 1.h)
     {

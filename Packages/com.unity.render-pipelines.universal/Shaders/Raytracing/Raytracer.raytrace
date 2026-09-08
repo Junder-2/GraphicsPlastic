@@ -1,6 +1,6 @@
 #include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RaytraceCommon.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RayAccumulateCommon.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/Shaders/Raytracing/RaytracingSample.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
 
 #pragma max_recursion_depth 10
 
@@ -8,14 +8,24 @@ float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 
 float4 _CameraParams; // x = Nearclip, y = FarClip, z = FarClip / Nearclip, w = PixelSpreadAngle
+float4 _TransparentSampleParams; // x = Downscale amount, y = 1 / Downscale amount
+float4 _AccumulateReflectionOffset;
 
 RWTexture2D<float4> _ReflectionRenderTarget;
+RWTexture2D<float4> _TransparentReflectionRenderTarget;
 // RWTexture2D<half> _ShadowRenderTarget;
 
 bool _WriteReflections;
 bool _WriteShadows;
 
 int _FrameIndex;
+int _RenderMode;
+float _RenderNoiseFraction;
+
+float Luminance(half3 linearRgb)
+{
+    return dot(linearRgb, half3(0.2126729, 0.7151522, 0.0721750));
+}
 
 [shader("raygeneration")]
 void Raytracer()
@@ -26,9 +36,18 @@ void Raytracer()
     // init random seed from current pixel location and frame index
     uint seed = initRand(dispatchId.x + dispatchId.y * dispatchDim.x, _FrameIndex % 64);
 
-    bool renderPixel = ((uint(dispatchId.x * _AccumulateReflectionOffset.x) +
-                         uint(dispatchId.y * _AccumulateReflectionOffset.y) + (uint)_AccumulateReflectionFrameIndex)
+    bool renderPixel = true;
+
+    if (_RenderMode == 1)
+    {
+        renderPixel = ((uint(dispatchId.x * _AccumulateReflectionOffset.x) +
+                         uint(dispatchId.y * _AccumulateReflectionOffset.y) + (uint)(_FrameIndex))
                          & 1) == 0;
+    }
+    else if (_RenderMode == 2)
+    {
+        renderPixel = InterleavedGradientNoise(float2(dispatchId.xy), _FrameIndex) < _RenderNoiseFraction;
+    }
 
     if (!renderPixel) return;
 
@@ -87,10 +106,71 @@ void Raytracer()
 
     // float3 color = _ReflectionRenderTarget[dispatchId.xy];
     // _ReflectionRenderTarget[dispatchId.xy] = lerp(color, payload.color, .16f);
-    _ReflectionRenderTarget[dispatchId.xy] = float4(saturate(payload.color), 1.h - saturate(-payload.color.x));
+    _ReflectionRenderTarget[dispatchId.xy] = float4(payload.color, 1.h - saturate(-payload.color.x));
     // _ReflectionRenderTarget[dispatchId.xy] = float4(uv, payload.color.x, 1.h - saturate(-payload.color.x));
     // if(_WriteReflections) _ReflectionRenderTarget[dispatchId.xy] = payload.color;
     // if(_WriteShadows) _ShadowRenderTarget[dispatchId.xy] = payload.shadow;
+}
+
+[shader("raygeneration")]
+void TransparentRaytracer()
+{
+    uint3 dispatchId = DispatchRaysIndex();
+    uint3 dispatchDim = DispatchRaysDimensions();
+
+    // init random seed from current pixel location and frame index
+    uint seed = initRand(dispatchId.x + dispatchId.y * dispatchDim.x, _FrameIndex % 64);
+
+    bool renderPixel = true;
+
+    if (_RenderMode == 1)
+    {
+        renderPixel = ((uint(dispatchId.x * _AccumulateReflectionOffset.x) +
+                         uint(dispatchId.y * _AccumulateReflectionOffset.y) + (uint)(_FrameIndex & 1))
+                         & 1) == 0;
+    }
+    else if (_RenderMode == 2)
+    {
+        renderPixel = InterleavedGradientNoise(float2(dispatchId.xy), _FrameIndex) < _RenderNoiseFraction;
+    }
+
+    if (!renderPixel) return;
+
+    float2 uv = (dispatchId.xy + float2(.5f,.5f)) / float2(dispatchDim.x, dispatchDim.y);
+    float2 ndc = uv * 2.0f - 1.0f;
+
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    // Invert the perspective projection of the view-space position
+    float3 viewDirection = mul(_CameraInverseProjection, float4(ndc, 0.0f, 1.0f)).xyz;
+    // Transform the viewDirection from camera to world space and normalize
+    viewDirection = mul(_CameraToWorld, float4(viewDirection, 0.0f)).xyz;
+    viewDirection = normalize(viewDirection);
+
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.Direction = viewDirection;
+    ray.TMin = _CameraParams.x;
+    ray.TMax = gClipDistance;
+
+    RayPayload payload;
+    payload.color = half3(0, 0, 0);
+    payload.shadow = 1;
+    payload.randomSeed = seed;
+    payload.depth = 0;
+    payload.data = ONLY_REFLECTIONRAY_FLAG;
+
+    payload.rayConeSpreadAngle = _CameraParams.w;
+    payload.rayConeWidth = 0;
+
+    uint flags = 0;
+
+    flags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+
+    TraceRay(_RaytracingAccelerationStructure, flags, RAYTRACING_TRANSPARENT, 0, 1, 0, ray, payload);
+
+    _TransparentReflectionRenderTarget[dispatchId.xy] = float4(payload.color, 1.h - saturate(-payload.color.x));
+    // _TransparentReflectionRenderTarget[dispatchId.xy] = float4(1, 0, 0, 1);
 }
 
 [shader("miss")]

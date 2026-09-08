@@ -16,7 +16,7 @@ half CalculateShadowAttenuation(float3 worldPos, half3 lightDir, half lightDist)
     return hit ? 0 : 1;
 }
 
-half3 RayReflectionCalc(float3 worldPos, half3 reflectDir, RayPayload rayPayload)
+half3 RayReflectionCalc(float3 worldPos, half3 reflectDir, RayPayload rayPayload, bool incrementDepth = true)
 {
     RayDesc reflectRay;
     reflectRay.Origin = worldPos;
@@ -29,7 +29,7 @@ half3 RayReflectionCalc(float3 worldPos, half3 reflectDir, RayPayload rayPayload
     reflectPayload.rayConeSpreadAngle = rayPayload.rayConeSpreadAngle;
     reflectPayload.rayConeWidth = rayPayload.rayConeWidth;
     reflectPayload.randomSeed = rayPayload.randomSeed;
-    reflectPayload.depth = rayPayload.depth + 1;
+    reflectPayload.depth = incrementDepth ? rayPayload.depth + 1 : rayPayload.depth;
     reflectPayload.data = 0;
 
     uint flags = 0;
@@ -41,38 +41,29 @@ half3 RayReflectionCalc(float3 worldPos, half3 reflectDir, RayPayload rayPayload
     return reflectPayload.color;
 }
 
-void RayTransparentCalc(float alpha, float3 worldPos, half3 worldNormal, float refraction, RayPayload rayPayload, inout float4 color, inout float3 reflect)
+half3 RayTransparentCalc(float3 worldPos, float3 rayDir, RayPayload rayPayload)
 {
-    float3 rayDir = WorldRayDirection();
     RayDesc transparentRay;
-
-    int flags = RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-
-    #ifdef USE_REFRACTION
-        float currentIoR = dot(rayDir, worldNormal) <= 0.0 ? 1 / (refraction*.25+1) : refraction*.25+1;
-
-        float3 n = dot(worldNormal, rayDir) <= 0.0 ? worldNormal : -worldNormal;
-
-        transparentRay.Origin = worldPos;
-        transparentRay.Direction = refract(normalize(rayDir), n, currentIoR);
-    #else
-        transparentRay.Origin = worldPos;
-        transparentRay.Direction = normalize(rayDir);
-    #endif
-
+    transparentRay.Origin = worldPos;
+    transparentRay.Direction = normalize(rayDir);
     transparentRay.TMin = 0.001;
     transparentRay.TMax = gClipDistance*.75;
 
     RayPayload transPayload;
     transPayload.color = 0;
+    transPayload.rayConeSpreadAngle = rayPayload.rayConeSpreadAngle;
+    transPayload.rayConeWidth = rayPayload.rayConeWidth;
     transPayload.randomSeed = rayPayload.randomSeed;
     transPayload.depth = rayPayload.depth + 1;
     transPayload.data = 0;
 
+    uint flags = 0;
+
+    flags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+
     TraceRay(_RaytracingAccelerationStructure, flags, RAYTRACING_DEFAULT, 0, 1, 0, transparentRay, transPayload);
 
-    color = float4(lerp(transPayload.color.xyz, color.xyz, alpha), 1);
-    reflect = float3(lerp(transPayload.color.xyz, reflect, alpha));
+    return transPayload.color;
 }
 
 half3 RayGlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half perceptualRoughness, half occlusion, RayPayload rayPayload)

@@ -28,7 +28,10 @@ half Alpha(half albedoAlpha, half4 color, half cutoff)
     half alpha = color.a;
 #endif
 
-    alpha = RayAlphaClip(alpha, cutoff);
+#if defined(_ALPHATEST_ON)
+    if (IsAlphaDiscardEnabled())
+        alpha = RayAlphaClip(alpha, cutoff);
+#endif
 
     return alpha;
 }

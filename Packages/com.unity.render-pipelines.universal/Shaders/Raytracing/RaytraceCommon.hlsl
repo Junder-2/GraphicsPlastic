@@ -10,7 +10,9 @@ RaytracingAccelerationStructure  _RaytracingAccelerationStructure;
 
 #define RAYTRACING_DEFAULT (1 << 0)
 #define RAYTRACING_SHADOW (1 << 1)
+#define RAYTRACING_TRANSPARENT (1 << 2)
 #define SHADOWRAY_FLAG 0x200
+#define ONLY_REFLECTIONRAY_FLAG (1 << 0)
 
 #define EPSILON         1.0e-4
 
@@ -23,6 +25,7 @@ static const float LODbias = 1.f;
 
 uniform int gClipDistance;
 uniform int gMaxReflectDepth;
+uniform int gMaxTransparentDepth;
 uniform float gLODBias;
 
 half4 RaySampleTex2DLod(Texture2D tex, SamplerState sampler, float2 uv, float lod)
@@ -61,7 +64,7 @@ half RayAlphaClip(half alpha, half cutoff)
 {
     bool zeroCutoff = (cutoff <= 0.0);
 
-    return !zeroCutoff ? step(cutoff, alpha) : alpha;
+    return !zeroCutoff ? step(cutoff, alpha) * alpha : alpha;
 }
 
 // compute random seed from one input

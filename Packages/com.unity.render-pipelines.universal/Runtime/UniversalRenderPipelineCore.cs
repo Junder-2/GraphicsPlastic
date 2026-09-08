@@ -1037,6 +1037,7 @@ namespace UnityEngine.Rendering.Universal
         public static GlobalKeyword ForwardPlus; // Backward compatibility. Deprecated in 6.1.
         // PLASTIC
         public static GlobalKeyword ReflectionScreen;
+        public static GlobalKeyword TransparentReflectionScreen;
         public static GlobalKeyword ReflectionScreenBilinear;
         public static GlobalKeyword ReflectionScreenTrilinear;
         public static GlobalKeyword ReflectionScreenBicubic;
@@ -1157,6 +1158,7 @@ namespace UnityEngine.Rendering.Universal
 
             // PLASTIC
             ShaderGlobalKeywords.ReflectionScreen = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreen);
+            ShaderGlobalKeywords.TransparentReflectionScreen = GlobalKeyword.Create(ShaderKeywordStrings.TransparentReflectionScreen);
             ShaderGlobalKeywords.ReflectionScreenBilinear = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenBilinear);
             ShaderGlobalKeywords.ReflectionScreenTrilinear = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenTrilinear);
             ShaderGlobalKeywords.ReflectionScreenBicubic = GlobalKeyword.Create(ShaderKeywordStrings.ReflectionScreenBicubic);
@@ -1502,6 +1504,7 @@ namespace UnityEngine.Rendering.Universal
         // PLASTIC
         /// <summary> Keyword used for screen space reflection texture. </summary>
         public const string ReflectionScreen = "_REFLECTION_SCREEN";
+        public const string TransparentReflectionScreen = "_TRANSPARENT_REFLECTION_SCREEN";
 
         public const string RenderBack = "_RENDER_FACE_BACK";
         public const string RenderDouble = "_RENDER_FACE_DOUBLE";

@@ -2544,6 +2544,16 @@ namespace UnityEditor.Rendering.Universal.ShaderGraph
             stages = KeywordShaderStage.Fragment,
         };
 
+        public static readonly KeywordDescriptor TransparentReflectionScreen = new KeywordDescriptor()
+        {
+            displayName = "Transparent Reflection Screen",
+            referenceName = ShaderKeywordStrings.TransparentReflectionScreen,
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.MultiCompile,
+            scope = KeywordScope.Global,
+            stages = KeywordShaderStage.Fragment,
+        };
+
         public static readonly KeywordDescriptor ReflectionScreenSampling = new KeywordDescriptor()
         {
             displayName = "Reflection Screen Sampling",

@@ -13,15 +13,20 @@ namespace UnityEngine.Rendering.Universal
     {
         [SerializeField, Range(-5, 5)] internal float lodBias = 1;
         [SerializeField, Range(0.001f, 1)] internal float renderScale = 1f;
+        [SerializeField, Range(0.001f, 1)] internal float transparentRenderScale = 1f;
         [SerializeField] internal LayerMask updateLayers;
+        [SerializeField, Min(0)] internal float cullDistance = 100f;
 
         [SerializeField] internal bool raytraceShadows = true;
         [SerializeField] internal bool raytraceReflections = true;
 
         [SerializeField, Range(1, 5)] internal byte maxReflectionDepth = 1;
+        [SerializeField, Range(0, 5)] internal byte maxTransparentDepth = 1;
+        [SerializeField] internal bool reflectionTransparent = false;
         [SerializeField] internal bool renderReflectionsMainShadows = true;
 
         [SerializeField] internal RenderMode renderMode = RenderMode.FullRes;
+        [SerializeField, Range(0.001f, 1)] internal float renderNoiseFraction = .5f;
         [SerializeField] internal SamplingMode samplingMode = SamplingMode.Point;
         [SerializeField] internal NormalFormatQuality normalFormatQuality = NormalFormatQuality.Default;
         [SerializeField, Range(0, 300)] internal int targetFrameRate;
@@ -33,7 +38,8 @@ namespace UnityEngine.Rendering.Universal
         {
             FullRes,
             HalfLines,
-            HalfCheckerboard
+            HalfCheckerboard,
+            InterleavedGradientNoise,
         }
 
         internal enum SamplingMode
@@ -52,6 +58,11 @@ namespace UnityEngine.Rendering.Universal
             Dual,
             [Tooltip("Best quality.")]
             Gaussian,
+        }
+
+        internal void Validate()
+        {
+            transparentRenderScale = Mathf.Min(transparentRenderScale, renderScale);
         }
     }
 
@@ -133,6 +144,7 @@ namespace UnityEngine.Rendering.Universal
             if (!TryPrepareResources())
                 return;
 
+            settings.Validate();
             if (m_RaytracingPass.Setup(settings, m_RayTracingShader, m_BlurMaterial))
                 renderer.EnqueuePass(m_RaytracingPass);
         }
