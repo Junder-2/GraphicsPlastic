@@ -30,6 +30,7 @@ namespace UnityEngine.Rendering.Universal
         [SerializeField] internal SamplingMode samplingMode = SamplingMode.Point;
         [SerializeField] internal NormalFormatQuality normalFormatQuality = NormalFormatQuality.Default;
         [SerializeField, Range(0, 300)] internal int targetFrameRate;
+        [SerializeField, Range(0, 300)] internal int targetCullRate;
 
         [SerializeField] internal bool generateReflectionMips;
         [SerializeField] internal BlurMode reflectionBlurMode = BlurMode.Dual;

@@ -11,11 +11,56 @@ namespace UnityEngine.Rendering.Universal
 
     internal class RaytracingPass : ScriptableRenderPass
     {
+        internal struct UpdateTimer
+        {
+            internal int prevTargetRate;
+            internal double updateInterval;
+            internal double updateTimer;
+            internal bool updateImmediate;
+
+            internal void SetTargetRate(int targetRate)
+            {
+                if (prevTargetRate == targetRate) return;
+
+                if (targetRate <= 0)
+                {
+                    updateInterval = -1;
+                }
+                else updateInterval = 1d / targetRate;
+
+                prevTargetRate = targetRate;
+                updateImmediate = true;
+            }
+
+            internal bool CanUpdate(double deltaTime)
+            {
+                if (updateImmediate)
+                {
+                    updateImmediate = false;
+                    updateTimer = 0;
+                    return true;
+                }
+                if (updateInterval <= 0) return true;
+                updateTimer += deltaTime;
+
+                if (updateTimer < updateInterval)
+                {
+                    return false;
+                }
+
+                updateTimer -= updateInterval;
+                return true;
+            }
+
+            internal void MarkImmediate()
+            {
+                updateImmediate = true;
+            }
+        }
+
         private int m_FrameIndex;
-        private float m_CullUpdate = 0f;
-        private int m_PrevTargetFrameRate = 0;
-        private float m_UpdateTarget = 0f;
-        private float m_CaptureUpdate = 0f;
+        private UpdateTimer m_TraceTimer;
+        private UpdateTimer m_CullTimer;
 
         private bool m_Rendered;
 
@@ -62,7 +107,6 @@ namespace UnityEngine.Rendering.Universal
 
         private static readonly int id_ScreenSpaceReflectionTexture = Shader.PropertyToID("_ScreenSpaceReflectionTexture");
         private static readonly int id_TransparentScreenSpaceReflectionTexture = Shader.PropertyToID("_TransparentScreenSpaceReflectionTexture");
-
 
         private const int MaxMipBlurCount = 8;
 
@@ -575,7 +619,7 @@ namespace UnityEngine.Rendering.Universal
 
             m_RaytracingCullingConfig.instanceTests = new[] { defaultTest, shadowTest, transparentTest };
 
-            m_CullUpdate = 100;
+            m_CullTimer.MarkImmediate();
 
             m_AccelerationStructure.ClearInstances();
             m_AccelerationStructure.CullInstances(ref m_RaytracingCullingConfig);
@@ -1013,17 +1057,10 @@ namespace UnityEngine.Rendering.Universal
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
-            if (m_PrevTargetFrameRate != m_CurrentSettings.targetFrameRate)
-            {
-                m_PrevTargetFrameRate = m_CurrentSettings.targetFrameRate;
-                if (m_PrevTargetFrameRate <= 0)
-                {
-                    m_UpdateTarget = 0f;
-                }
-                else m_UpdateTarget = 1f / m_PrevTargetFrameRate;
+            m_TraceTimer.SetTargetRate(m_CurrentSettings.targetFrameRate);
+            m_CullTimer.SetTargetRate(m_CurrentSettings.targetCullRate);
 
-                m_CaptureUpdate = 100;
-            }
+            // Application.targetFrameRate = 0;
 
             m_CurrentSettings.Validate();
 
@@ -1076,24 +1113,16 @@ namespace UnityEngine.Rendering.Universal
                 {
                     var cmd = context.cmd;
 
-                    UpdateCulling(data.cameraData, ref m_CurrentSettings);
-                    m_CullUpdate += Time.unscaledDeltaTime;
-
-                    // if (m_CullUpdate >= m_UpdateTarget)
+                    if (m_CullTimer.CanUpdate(Time.unscaledDeltaTime))
                     {
-                        m_CullUpdate = 0;
-
+                        UpdateCulling(data.cameraData, ref m_CurrentSettings);
                         m_AccelerationStructure.ClearInstances();
                         m_AccelerationStructure.CullInstances(ref m_RaytracingCullingConfig);
                         m_AccelerationStructure.Build();
                     }
 
-                    m_CaptureUpdate += Time.unscaledDeltaTime;
-                    if (m_CaptureUpdate >= m_UpdateTarget)
+                    if (m_TraceTimer.CanUpdate(Time.unscaledDeltaTime))
                     {
-                        // Debug.Log($"Finish {m_CaptureUpdate}");
-                        m_CaptureUpdate = 0;
-
                         UpdateParams(cmd, ref m_CurrentSettings, ref passData.cameraData);
 
                         UpdateCameraData(cmd, ref passData.cameraData);
@@ -1124,7 +1153,8 @@ namespace UnityEngine.Rendering.Universal
 
                         m_FrameIndex = (m_FrameIndex + 1) % 1024;
                         m_Rendered = true;
-                    } // else Debug.Log($"Tick {m_CaptureUpdate} {m_UpdateTarget}");
+                    }
+                    // else Debug.Log($"Tick {m_CaptureUpdate} {m_UpdateTarget}");
                 });
             }
 
