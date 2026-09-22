@@ -42,6 +42,18 @@ float4 _TransparentScreenSpaceReflectionTexture_TexelSize;
 #define ScreenSpaceTexSize _TransparentScreenSpaceReflectionTexture_TexelSize
 #endif
 
+half SampleReflectionScreenMask(float2 pos)
+{
+#if defined(_REFLECTION_SCREEN_BILINEAR) || defined(_REFLECTION_SCREEN_TRILINEAR) || defined(_REFLECTION_SCREEN_BICUBIC)
+    half alpha = SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_PointClamp, pos, 0).a;
+#else
+    half alpha = SAMPLE_TEXTURE2D_LOD(ScreenSpaceTex, sampler_PointClamp, pos, 0).a;
+#endif
+
+    // return alpha;
+    return clamp(alpha - fwidth(alpha), 0.f, 1.f);
+}
+
 half4 SampleReflectionScreen(float2 pos, half roughness)
 {
 #if defined(_REFLECTION_SCREEN_MIPS)
@@ -487,13 +499,18 @@ half3 GlossyEnvironmentReflection(half3 reflectVector, float3 positionWS, half p
 
 #if !defined(_ENVIRONMENTREFLECTIONS_OFF)
     #if USE_REFLECTION_SCREEN
-    half4 reflectColor = SampleReflectionScreen(normalizedScreenSpaceUV.xy, perceptualRoughness);
-    screenReflect = reflectColor.rgb;
-    screenReflectMask = reflectColor.a;
-    if (screenReflectMask >= 1.h)
+    screenReflectMask = SampleReflectionScreenMask(normalizedScreenSpaceUV.xy);
+    if (screenReflectMask > 0.h)
     {
-        return screenReflect * occlusion;
+        half4 reflectColor = SampleReflectionScreen(normalizedScreenSpaceUV.xy, perceptualRoughness);
+        screenReflect = reflectColor.rgb;
+        screenReflectMask = min(reflectColor.a, screenReflectMask);
+        if (screenReflectMask >= 1.h)
+        {
+            return screenReflect * occlusion;
+        }
     }
+
     #endif
 
     if (_REFLECTION_PROBE_BLENDING)
